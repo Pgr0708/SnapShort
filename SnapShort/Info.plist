@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>UIAppFonts</key>
+	<array>
+		<string>AbrilFatface-Regular.ttf</string>
+		<string>AlfaSlabOne-Regular.ttf</string>
+		<string>AmaticSC-Bold.ttf</string>
+		<string>Anton-Regular.ttf</string>
+		<string>Baloo2-Bold.ttf</string>
+		<string>BarlowCondensed-Bold.ttf</string>
+		<string>Caveat-Bold.ttf</string>
+		<string>ChakraPetch-Bold.ttf</string>
+		<string>Comfortaa-Bold.ttf</string>
+		<string>DMSans-Bold.ttf</string>
+		<string>DMSerifDisplay-Regular.ttf</string>
+		<string>Exo2-ExtraBold.ttf</string>
+		<string>Inter_18pt-Bold.ttf</string>
+		<string>Kalam-Bold.ttf</string>
+		<string>Lobster-Regular.ttf</string>
+		<string>Lora-Bold.ttf</string>
+		<string>Merriweather-Black.ttf</string>
+		<string>Nunito-ExtraBold.ttf</string>
+		<string>Orbitron-Bold.ttf</string>
+		<string>Oswald-Medium.ttf</string>
+		<string>Pacifico-Regular.ttf</string>
+		<string>PatrickHand-Regular.ttf</string>
+		<string>PlayfairDisplay-Bold.ttf</string>
+		<string>Poppins-SemiBold.ttf</string>
+		<string>Quicksand-Bold.ttf</string>
+		<string>Rajdhani-Bold.ttf</string>
+		<string>Righteous-Regular.ttf</string>
+		<string>SairaCondensed-Bold.ttf</string>
+		<string>ShadowsIntoLight-Regular.ttf</string>
+		<string>ShadowsIntoLight.ttf</string>
+		<string>Teko-SemiBold.ttf</string>
+		<string>archivo-black.regular.ttf</string>
+		<string>bangers.regular.ttf</string>
+		<string>montserrat.extrabold.ttf</string>
+		<string>oswald.bold.ttf</string>
+		<string>space-grotesk.bold.ttf</string>
+	</array>
+</dict>
+</plist>
