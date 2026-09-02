@@ -14,6 +14,11 @@ internal import Combine
 final class PhotoLibraryManager: ObservableObject {
 
     @Published private(set) var assets: PHFetchResult<PHAsset>?
+    
+    /// Override the current fetch result (e.g. to show only screenshots).
+    func setAssets(_ result: PHFetchResult<PHAsset>) {
+        assets = result
+    }
 
     func fetchPhotos() {
 

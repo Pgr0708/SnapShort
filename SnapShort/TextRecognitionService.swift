@@ -81,7 +81,7 @@ private struct TextBoundingBox: Codable {
 actor TextRecognitionService: TextRecognitionServicing {
     private let visionStore: VisionCacheStore
     private let batchProcessor: BatchVisionProcessor
-    private var currentTask: Task<Void, Error>?
+    private var currentTask: Task<Void, Never>?
     private let logger = Logger(subsystem: "com.snapsort.vision", category: "ocr")
     
     init(visionStore: VisionCacheStore, batchProcessor: BatchVisionProcessor) {
@@ -156,7 +156,7 @@ actor TextRecognitionService: TextRecognitionServicing {
         }
         
         self.currentTask = task
-        _ = await task.result
+        _ = await task.value
         self.currentTask = nil
     }
     

@@ -5,6 +5,7 @@
 
 import Foundation
 import CoreData
+import CoreGraphics
 import os.log
 
 enum RecordType: String, CaseIterable {
@@ -51,7 +52,22 @@ actor VisionCacheStore {
     private let logger = Logger(subsystem: "com.snapsort.vision", category: "store")
     
     init(container: NSPersistentContainer? = nil) {
-        let targetContainer = container ?? CoreDataManager.shared.nsPersistentContainer
+        // CoreDataManager.nsPersistentContainer is an IUO; provide a local fallback
+        // in case it hasn't finished loading yet (rare, only on cold launch race).
+        let targetContainer: NSPersistentContainer
+        if let supplied = container {
+            targetContainer = supplied
+        } else if let shared = CoreDataManager.shared.nsPersistentContainer {
+            targetContainer = shared
+        } else {
+            // Fallback: create an in-memory store so the actor never crashes.
+            let fallback = NSPersistentContainer(name: "GoViral")
+            let desc = NSPersistentStoreDescription()
+            desc.type = NSInMemoryStoreType
+            fallback.persistentStoreDescriptions = [desc]
+            fallback.loadPersistentStores { _, _ in }
+            targetContainer = fallback
+        }
         self.container = targetContainer
         self.context = targetContainer.newBackgroundContext()
         self.context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy

@@ -203,11 +203,9 @@ actor BatchVisionProcessor {
               ProcessInfo.processInfo.thermalState == .critical ||
               ProcessInfo.processInfo.isLowPowerModeEnabled {
             
-            logger.warning(
-                "Thermal: \(String(describing: ProcessInfo.processInfo.thermalState)), " +
-                "LowPower: \(ProcessInfo.processInfo.isLowPowerModeEnabled). " +
-                "Pausing for \(backoffSeconds)s"
-            )
+            let thermalDesc = String(describing: ProcessInfo.processInfo.thermalState)
+            let lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+            logger.warning("Thermal: \(thermalDesc), LowPower: \(lowPower). Pausing for \(backoffSeconds)s")
             
             try? await Task.sleep(nanoseconds: backoffSeconds * 1_000_000_000)
             backoffSeconds = min(backoffSeconds * 2, 30)

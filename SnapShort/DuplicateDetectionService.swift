@@ -140,7 +140,7 @@ private func hammingDistance(hash1: String, hash2: String) -> Int? {
 actor DuplicateDetectionService: DuplicateDetectionServicing {
     private let visionStore: VisionCacheStore
     private let batchProcessor: BatchVisionProcessor
-    private var currentTask: Task<Void, Error>?
+    private var currentTask: Task<Void, Never>?
     private let logger = Logger(subsystem: "com.snapsort.vision", category: "duplicate")
     
     init(visionStore: VisionCacheStore, batchProcessor: BatchVisionProcessor) {
@@ -205,7 +205,7 @@ actor DuplicateDetectionService: DuplicateDetectionServicing {
         }
         
         self.currentTask = task
-        _ = await task.result
+        _ = await task.value
         self.currentTask = nil
     }
     
@@ -233,7 +233,10 @@ actor DuplicateDetectionService: DuplicateDetectionServicing {
             
             let sameDay = recordDay == lastDay
             let sameAspect = lastAspectRatio.map { abs($0 - roundedAR) < aspectRatioTolerance } ?? false
-            let withinTime = lastDate.map { record.date.map { $0.timeIntervalSince($1) < dateThreshold } ?? false } ?? true
+            let withinTime: Bool = {
+                guard let ld = lastDate, let rd = record.date else { return true }
+                return abs(rd.timeIntervalSince(ld)) < dateThreshold
+            }()
             
             if sameDay && sameAspect && withinTime {
                 currentBucket.append(record)

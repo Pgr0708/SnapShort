@@ -50,7 +50,7 @@ struct RootView: View {
             ContentView(viewModel: homeViewModel)
             
         default:
-            SplashScreenView()
+            SplashScreenView(homeViewModel: homeViewModel)
         }
     }
 }

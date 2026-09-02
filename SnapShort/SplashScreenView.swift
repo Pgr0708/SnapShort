@@ -10,6 +10,7 @@ import Lottie
 
 struct SplashScreenView: View {
     @EnvironmentObject private var settings: SettingsManager
+    let homeViewModel: HomeViewModel
     @State private var isActive = false
     @State private var size = 0.8
     @State private var opacity = 0.5
@@ -17,7 +18,7 @@ struct SplashScreenView: View {
     var body: some View {
         
         if isActive {
-            RootView()
+            RootView(homeViewModel: homeViewModel)
         } else {
             ZStack {
                 LinearGradient(colors: [Color(hex: "#1A1F36"), Color(hex: "#0D0F1A")], startPoint: .topLeading, endPoint: .bottomTrailing)

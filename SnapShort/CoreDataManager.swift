@@ -13,10 +13,21 @@ class CoreDataManager: NSObject {
     private(set) var nsPersistentContainer: NSPersistentCloudKitContainer!
     private var hasRetried = false
     
-        static let shared = CoreDataManager()
+    // In-memory fallback context used before the real store finishes loading
+    private lazy var fallbackContext: NSManagedObjectContext = {
+        let ctx = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
+        return ctx
+    }()
     
+    static let shared = CoreDataManager()
+    
+    /// Safe context accessor — returns the real viewContext once loaded,
+    /// otherwise returns a no-op in-memory context so callers never crash.
     var context: NSManagedObjectContext {
-        return CoreDataManager.shared.nsPersistentContainer.viewContext
+        guard let container = nsPersistentContainer else {
+            return fallbackContext
+        }
+        return container.viewContext
     }
     
     func delete(_ object: NSManagedObject) {

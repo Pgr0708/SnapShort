@@ -41,5 +41,13 @@
 		<string>oswald.bold.ttf</string>
 		<string>space-grotesk.bold.ttf</string>
 	</array>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>SnapShort uses speech recognition to let you search your photos by speaking.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SnapShort needs microphone access so you can speak your search query.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

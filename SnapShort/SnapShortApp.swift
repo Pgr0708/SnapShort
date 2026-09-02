@@ -13,6 +13,7 @@ class AppDependencies {
     let batchProcessor: BatchVisionProcessor
     let duplicateService: DuplicateDetectionService
     let textRecognitionService: TextRecognitionService
+    let contentSearchService: ContentSearchService
     let unifiedSearchService: UnifiedSearchService
     let homeViewModel: HomeViewModel
     
@@ -21,10 +22,12 @@ class AppDependencies {
         self.batchProcessor = BatchVisionProcessor(visionStore: visionStore)
         self.duplicateService = DuplicateDetectionService(visionStore: visionStore, batchProcessor: batchProcessor)
         self.textRecognitionService = TextRecognitionService(visionStore: visionStore, batchProcessor: batchProcessor)
+        self.contentSearchService = ContentSearchService(visionStore: visionStore, batchProcessor: batchProcessor)
         self.unifiedSearchService = UnifiedSearchService(textRecognitionService: textRecognitionService)
         self.homeViewModel = HomeViewModel(
             duplicateService: duplicateService,
             textRecognitionService: textRecognitionService,
+            contentSearchService: contentSearchService,
             unifiedSearchService: unifiedSearchService
         )
     }
@@ -40,14 +43,8 @@ struct SnapShortApp: App {
         WindowGroup {
             RootView(homeViewModel: dependencies.homeViewModel)
                 .environmentObject(settings)
-                .environment(
-                    \.locale,
-                     Locale(identifier: settings.languageCode)
-                     )
-                .environment(
-                           \.managedObjectContext,
-                           CoreDataManager.shared.context
-                       )
+                .environment(\.locale, Locale(identifier: settings.languageCode))
+                .environment(\.managedObjectContext, CoreDataManager.shared.context)
                 .preferredColorScheme(settings.preferredColorScheme)
         }
     }
