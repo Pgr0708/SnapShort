@@ -8,7 +8,7 @@
 import Foundation
 
 enum AppInfo {
-    static var appName: String = "GoViral"
+    static var appName: String = "SnapShort"
     
     static var version: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
@@ -19,7 +19,7 @@ enum AppInfo {
     }
 
     static var bundleIdentifier: String {
-        Bundle.main.bundleIdentifier ?? "com.bhavik.GoViral"
+        Bundle.main.bundleIdentifier ?? "com.bhavik.SnapShort"
     }
 
     static var supportURLString: String =   "https://dakshyaminfotech.store/support/"

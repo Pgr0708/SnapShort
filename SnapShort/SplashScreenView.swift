@@ -19,29 +19,60 @@ struct SplashScreenView: View {
         if isActive {
             RootView()
         } else {
+            ZStack {
+                LinearGradient(colors: [Color(hex: "#1A1F36"), Color(hex: "#0D0F1A")], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    .ignoresSafeArea()
+                
+                Image("onboardingBackground")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .ignoresSafeArea()
+                
+                
                 VStack {
-                        Text(AppInfo.appName)
-                    }
-                    .padding()
-                    .scaleEffect(size)
-                    .opacity(opacity)
-                    .onAppear {
-                        withAnimation(.easeIn(duration: 1)) {
-                            size = 1.0
-                            opacity = 1.0
-                        }
-                    }
+                    Image("AppIcon")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 120, height: 120)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .shadow(
+                               color: .white.opacity(0.40),
+                               radius: 20,
+                        )
+                        .padding(40)
                     
-                    VStack(spacing: 8) {
-                        Spacer()
-                        
-                        LottieView(animation: .named("Loading"))
-                            .playing(loopMode: .loop)
-                            .frame(maxWidth: .infinity, maxHeight: 30)
-                        
-                        Text(String(localized: "Version \(AppInfo.version)"))
-
+                    Text(AppInfo.appName)
+                        .foregroundStyle(.white)
+                        .font(.system(size: 36, weight: .bold))
+                        .padding(.top, 14)
+                    
+//                    Text(String(localized: "Version \(AppInfo.version)"))
+                    Text(L10n.splashScreenSubtitle)
+                        .foregroundStyle(Color(hex: "#A0AEC0"))
+                        .font(.system(size: 16))
+                        .padding(.top, 4)
                 }
+                .padding()
+                .scaleEffect(size)
+                .opacity(opacity)
+                .onAppear {
+                    withAnimation(.easeIn(duration: 1)) {
+                        size = 1.0
+                        opacity = 1.0
+                    }
+                }
+                
+//                VStack(spacing: 8) {
+//                    Spacer()
+//                    
+//                    LottieView(animation: .named("Loading"))
+//                        .playing(loopMode: .loop)
+//                        .frame(maxWidth: .infinity, maxHeight: 30)
+//                    
+//                    Text(String(localized: "Version \(AppInfo.version)"))
+//                    
+//                }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .onAppear {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
@@ -49,9 +80,17 @@ struct SplashScreenView: View {
                             isActive = true
                         }
                     }
+//                    for family in UIFont.familyNames.sorted() {
+//                        print("Family: \(family)")
+//
+//                        for font in UIFont.fontNames(forFamilyName: family).sorted() {
+//                            print("   \(font)")
+//                        }
+//                    }
                 }
             }
         }
     }
+}
 
 

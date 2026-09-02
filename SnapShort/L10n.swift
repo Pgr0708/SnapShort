@@ -16,4 +16,6 @@ enum L10n {
     static var EditSubscription           : LocalizedStringKey { "Edit Subscription" }
     
     static var Continue                   : LocalizedStringKey { "Continue" }
+    static var Library                    : LocalizedStringKey { "Library" }
+    static var splashScreenSubtitle       : LocalizedStringKey { "AI Powered Phtos Organizer" }
 }

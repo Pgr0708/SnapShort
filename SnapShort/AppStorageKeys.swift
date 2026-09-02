@@ -28,7 +28,9 @@ enum AppStorageKeys {
     static let selectedAccentColor         = "selectedAccentColor"
     static let selectedTheme               = "selectedTheme"
     static let isPremium                   = "isPremium"
-
+    
+    static let authorizationStatus         = "authorizationStatus"
+    static let hasPhotosAccess             = "hasPhotosAccess"
 }
 
 
