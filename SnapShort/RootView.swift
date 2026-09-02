@@ -19,42 +19,15 @@ enum AppFlow {
 
 struct RootView: View {
     @EnvironmentObject private var settings: SettingsManager
+    let homeViewModel: HomeViewModel
     
     var currentFlow: AppFlow {
         if !settings.hasSeenLanguage {
             return .language
-//        } else if !settings.hasSeenOnboarding {
-//            return .onboarding
-//        } else if !settings.hasSeenPaywall {
-//            return .paywall
-//        } else if !settings.hasSeenNotificationPrompt {
-//            return .notification
-//        } else if !settings.hasSeenCustomization {
-//            return .customization
         } else {
             return .home
         }
     }
-    
-//    var currentFlow: AppFlow {
-//
-//        // Phase 1: Language + Onboarding
-//        if !settings.hasSeenOnboarding {
-//            return .language
-//        }
-//
-//        // Phase 2: Paywall + Notification
-//        if !settings.hasSeenNotificationPrompt {
-//            return .paywall
-//        }
-//
-//        // Phase 3: Customization
-//        if !settings.hasSeenCustomization {
-//            return .customization
-//        }
-//
-//        return .home
-//    }
     
     var body: some View {
         switch currentFlow {
@@ -74,11 +47,10 @@ struct RootView: View {
             CustomizationScreenView()
             
         case .home:
-            ContentView()
+            ContentView(viewModel: homeViewModel)
             
         default:
             SplashScreenView()
         }
     }
-
 }

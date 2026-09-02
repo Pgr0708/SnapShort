@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		580917BB304841FB00B29E69 /* CocoaImageHashing in Frameworks */ = {isa = PBXBuildFile; productRef = 580917BA304841FB00B29E69 /* CocoaImageHashing */; };
+		580917BE3048426D00B29E69 /* DeepLook in Frameworks */ = {isa = PBXBuildFile; productRef = 580917BD3048426D00B29E69 /* DeepLook */; };
 		58E8F256303189D900395271 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 58E8F255303189D900395271 /* RevenueCat */; };
 		58E8F26130318A5900395271 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 58E8F26030318A5900395271 /* FirebaseAnalytics */; };
 		58E8F26F30318A5900395271 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 58E8F26E30318A5900395271 /* FirebaseCore */; };
@@ -47,6 +49,8 @@
 			files = (
 				58E8F28330318A5900395271 /* FirebaseMessaging in Frameworks */,
 				58E8F26130318A5900395271 /* FirebaseAnalytics in Frameworks */,
+				580917BB304841FB00B29E69 /* CocoaImageHashing in Frameworks */,
+				580917BE3048426D00B29E69 /* DeepLook in Frameworks */,
 				58E8F8143031951800395271 /* Lottie in Frameworks */,
 				58E8F26F30318A5900395271 /* FirebaseCore in Frameworks */,
 				58E8F256303189D900395271 /* RevenueCat in Frameworks */,
@@ -99,6 +103,8 @@
 				58E8F28230318A5900395271 /* FirebaseMessaging */,
 				58E8F28D30318A7700395271 /* Drops */,
 				58E8F8133031951800395271 /* Lottie */,
+				580917BA304841FB00B29E69 /* CocoaImageHashing */,
+				580917BD3048426D00B29E69 /* DeepLook */,
 			);
 			productName = SnapShort;
 			productReference = 588D488830459E8C00147248 /* SnapShort.app */;
@@ -147,6 +153,8 @@
 				58E8F25B30318A5900395271 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				58E8F28C30318A7700395271 /* XCRemoteSwiftPackageReference "Drops" */,
 				58E8F8123031951800395271 /* XCRemoteSwiftPackageReference "lottie-spm" */,
+				580917B9304841FB00B29E69 /* XCRemoteSwiftPackageReference "cocoaimagehashing" */,
+				580917BC3048426D00B29E69 /* XCRemoteSwiftPackageReference "DeepLook" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 588D488930459E8C00147248 /* Products */;
@@ -398,6 +406,22 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		580917B9304841FB00B29E69 /* XCRemoteSwiftPackageReference "cocoaimagehashing" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ameingast/cocoaimagehashing";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.9.0;
+			};
+		};
+		580917BC3048426D00B29E69 /* XCRemoteSwiftPackageReference "DeepLook" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/LA-Labs/DeepLook";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.3.4;
+			};
+		};
 		58E8F252303189D900395271 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
@@ -433,6 +457,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		580917BA304841FB00B29E69 /* CocoaImageHashing */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 580917B9304841FB00B29E69 /* XCRemoteSwiftPackageReference "cocoaimagehashing" */;
+			productName = CocoaImageHashing;
+		};
+		580917BD3048426D00B29E69 /* DeepLook */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 580917BC3048426D00B29E69 /* XCRemoteSwiftPackageReference "DeepLook" */;
+			productName = DeepLook;
+		};
 		58E8F255303189D900395271 /* RevenueCat */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 58E8F252303189D900395271 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;

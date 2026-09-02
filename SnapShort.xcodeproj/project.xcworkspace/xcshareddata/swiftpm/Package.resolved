@@ -1,5 +1,5 @@
 {
-  "originHash" : "993e6d500805b393fc72a2882ab6faebb8abc01ddc597dade1adc67bbf62441f",
+  "originHash" : "2e217ba161a3b16454aa411715d60ee56b19f580b52a5772776ccc1da7b91609",
   "pins" : [
     {
       "identity" : "abseil-cpp-binary",
@@ -17,6 +17,24 @@
       "state" : {
         "revision" : "3e33dd27dd4c69bd81c7c81fe61d8ccf58846902",
         "version" : "11.3.1"
+      }
+    },
+    {
+      "identity" : "cocoaimagehashing",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ameingast/cocoaimagehashing",
+      "state" : {
+        "revision" : "ad01eee3c3f91bd181f7f4eba7f48f7cb211b51c",
+        "version" : "1.9.0"
+      }
+    },
+    {
+      "identity" : "deeplook",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/LA-Labs/DeepLook",
+      "state" : {
+        "revision" : "afc601776ed98e8bf13f6bfaaf74d7f631bc24d5",
+        "version" : "0.3.4"
       }
     },
     {
@@ -98,6 +116,15 @@
       "state" : {
         "revision" : "040d087ac2267d2ddd4cca36c757d1c6a05fdbfe",
         "version" : "101.0.0"
+      }
+    },
+    {
+      "identity" : "ladsa",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/LA-Labs/LADSA.git",
+      "state" : {
+        "revision" : "37b532de3571f15d28a77ecf9f59019d190dfd9c",
+        "version" : "0.0.4"
       }
     },
     {

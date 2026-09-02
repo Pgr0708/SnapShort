@@ -1,2 +1,52 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24902" systemVersion="25F84" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier=""/>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24902" systemVersion="25F84" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
+    <entity name="ContentTagRecord" representedClassName="ContentTagRecord" syncable="YES" codeGenerationType="class">
+        <attribute name="assetLocalIdentifier" attributeType="String" indexed="YES"/>
+        <attribute name="computedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="tagConfidences" attributeType="Binary"/>
+        <attribute name="tags" attributeType="String"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="assetLocalIdentifier"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    <entity name="FaceEmbeddingRecord" representedClassName="FaceEmbeddingRecord" syncable="YES" codeGenerationType="class">
+        <attribute name="assetLocalIdentifier" attributeType="String" indexed="YES"/>
+        <attribute name="boundingBoxHeight" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="boundingBoxWidth" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="boundingBoxX" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="boundingBoxY" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="computedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="embeddingModelVersion" attributeType="String"/>
+        <attribute name="embeddingVector" attributeType="Binary"/>
+        <attribute name="faceIndex" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="faceQualityScore" attributeType="Float" defaultValueString="0.0" usesScalarValueType="YES"/>
+    </entity>
+    <entity name="ImageHashRecord" representedClassName="ImageHashRecord" syncable="YES" codeGenerationType="class">
+        <attribute name="assetLocalIdentifier" attributeType="String" indexed="YES"/>
+        <attribute name="captureDate" attributeType="Date" usesScalarValueType="NO" optional="YES"/>
+        <attribute name="computedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="dHashValue" attributeType="String"/>
+        <attribute name="imageHeight" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="imageWidth" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="pHashValue" attributeType="String"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="assetLocalIdentifier"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    <entity name="OCRTextRecord" representedClassName="OCRTextRecord" syncable="YES" codeGenerationType="class">
+        <attribute name="assetLocalIdentifier" attributeType="String" indexed="YES"/>
+        <attribute name="computedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="extractedText" attributeType="String"/>
+        <attribute name="ocrConfidence" attributeType="Float" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="textBoundingBoxes" attributeType="Binary"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="assetLocalIdentifier"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+</model>
