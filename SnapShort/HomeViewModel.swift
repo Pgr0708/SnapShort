@@ -195,90 +195,111 @@ final class HomeViewModel: ObservableObject {
         Task(priority: .background) { [weak self] in
             guard let self else { return }
             
-            // Check if any screenshots still need OCR indexing
+            // ── Pre-check pending items ──────────────────────────────────────
             let processedOCRIds = await self.visionStore.processedIdentifiers(for: .ocrText)
+            let processedTagIds = await self.visionStore.processedIdentifiers(for: .contentTag)
+            
             let fetchOptions = PHFetchOptions()
             fetchOptions.predicate = NSPredicate(
                 format: "mediaSubtype == %ld",
                 PHAssetMediaSubtype.photoScreenshot.rawValue
             )
             let screenshots = PHAsset.fetchAssets(with: .image, options: fetchOptions)
-            var unindexedCount = 0
+            var unindexedOCRCount = 0
             screenshots.enumerateObjects { a, _, _ in
                 if !processedOCRIds.contains(a.localIdentifier) {
-                    unindexedCount += 1
+                    unindexedOCRCount += 1
+                }
+            }
+            
+            let allImages = PHAsset.fetchAssets(with: .image, options: nil)
+            var unindexedTagCount = 0
+            allImages.enumerateObjects { a, _, _ in
+                if !processedTagIds.contains(a.localIdentifier) {
+                    unindexedTagCount += 1
                 }
             }
             
             await MainActor.run {
-                if unindexedCount > 0 {
-                    self.isOCRComplete = false
-                    self.isOCRIndexing = true
-                } else {
+                self.isOCRComplete = (unindexedOCRCount == 0)
+                self.isOCRIndexing = (unindexedOCRCount > 0)
+            }
+            
+            // If everything is already cached, exit immediately without showing any banner!
+            guard unindexedOCRCount > 0 || unindexedTagCount > 0 else {
+                await MainActor.run {
                     self.isOCRComplete = true
                     self.isOCRIndexing = false
+                    self.ocrIndexProgress = 1.0
+                    self.isBackgroundIndexing = false
                 }
+                return
             }
-            
-            // ── Phase 1: OCR ────────────────────────────────────────────────
-            let ocrProgress = ScanProgress()
-            
-            // Poll progress on MainActor every 300 ms while service runs
-            let ocrPoller = Task { @MainActor in
-                while !ocrProgress.isFinished {
-                    try? await Task.sleep(nanoseconds: 300_000_000)
-                    let frac = ocrProgress.fractionCompleted
-                    // Only show banner once we know there's work to do (total > 0)
-                    if ocrProgress.totalCount > 0 {
-                        if !self.isBackgroundIndexing {
-                            self.isBackgroundIndexing = true
-                        }
-                        self.isOCRComplete = false
-                        self.isOCRIndexing = true
-                        self.ocrIndexProgress = frac
-                        self.backgroundIndexMessage = "Scanning text in \(ocrProgress.totalCount) photos…"
-                        self.backgroundIndexProgress = frac * 0.5
-                    }
-                }
-            }
-            await textRecognitionService.indexScreenshots(progress: ocrProgress)
-            ocrPoller.cancel()
             
             await MainActor.run {
-                self.isOCRComplete = true
-                self.isOCRIndexing = false
-                self.ocrIndexProgress = 1.0
+                self.isBackgroundIndexing = true
             }
             
-            // ── Phase 2: Vision tagging ──────────────────────────────────────
-            let tagProgress = ScanProgress()
+            let hasOCRWork = unindexedOCRCount > 0
+            let hasTagWork = unindexedTagCount > 0
             
-            let tagPoller = Task { @MainActor in
-                while !tagProgress.isFinished {
-                    try? await Task.sleep(nanoseconds: 300_000_000)
-                    let frac = tagProgress.fractionCompleted
-                    if tagProgress.totalCount > 0 {
-                        if !self.isBackgroundIndexing {
-                            self.isBackgroundIndexing = true
-                        }
-                        self.backgroundIndexMessage = "Tagging objects in \(tagProgress.totalCount) photos…"
-                        self.backgroundIndexProgress = 0.5 + frac * 0.5
+            // ── Phase 1: OCR (if needed) ────────────────────────────────────
+            if hasOCRWork {
+                let ocrProgress = ScanProgress()
+                let ocrPoller = Task { @MainActor in
+                    while !ocrProgress.isFinished {
+                        try? await Task.sleep(nanoseconds: 80_000_000) // 80ms poll
+                        let frac = ocrProgress.fractionCompleted
+                        self.ocrIndexProgress = frac
+                        self.backgroundIndexMessage = "Scanning text (\(ocrProgress.processedCount)/\(ocrProgress.totalCount))…"
+                        let weight = hasTagWork ? 0.5 : 1.0
+                        self.backgroundIndexProgress = frac * weight
                     }
                 }
+                await self.textRecognitionService.indexScreenshots(progress: ocrProgress)
+                ocrPoller.cancel()
+                
+                await MainActor.run {
+                    self.isOCRComplete = true
+                    self.isOCRIndexing = false
+                    self.ocrIndexProgress = 1.0
+                }
             }
-            await contentSearchService.indexLibrary(progress: tagProgress)
-            tagPoller.cancel()
             
-            // ── If nothing was new, skip the banner entirely ─────────────────
-            guard isBackgroundIndexing else { return }
+            // ── Phase 2: Vision Tagging (if needed) ──────────────────────────
+            if hasTagWork {
+                let tagProgress = ScanProgress()
+                let baseProgress = hasOCRWork ? 0.5 : 0.0
+                let weight = hasOCRWork ? 0.5 : 1.0
+                
+                let tagPoller = Task { @MainActor in
+                    while !tagProgress.isFinished {
+                        try? await Task.sleep(nanoseconds: 80_000_000) // 80ms poll
+                        let frac = tagProgress.fractionCompleted
+                        self.backgroundIndexMessage = "Tagging objects (\(tagProgress.processedCount)/\(tagProgress.totalCount))…"
+                        self.backgroundIndexProgress = baseProgress + frac * weight
+                    }
+                }
+                await self.contentSearchService.indexLibrary(progress: tagProgress)
+                tagPoller.cancel()
+            }
             
-            // ── Done ────────────────────────────────────────────────────────
-            backgroundIndexProgress = 1.0
-            backgroundIndexMessage = "✓ Search is ready!"
-            try? await Task.sleep(nanoseconds: 2_200_000_000)   // show for 2.2 s then dismiss
-            isBackgroundIndexing = false
-            backgroundIndexProgress = 0.0
-            backgroundIndexMessage = ""
+            // ── Completion & Auto-Dismiss ───────────────────────────────────
+            await MainActor.run {
+                self.backgroundIndexProgress = 1.0
+                self.backgroundIndexMessage = "✓ Search is ready!"
+            }
+            
+            // Keep visible for 1.8s so user sees completion
+            try? await Task.sleep(nanoseconds: 1_800_000_000)
+            
+            await MainActor.run {
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    self.isBackgroundIndexing = false
+                    self.backgroundIndexProgress = 0.0
+                    self.backgroundIndexMessage = ""
+                }
+            }
         }
     }
     

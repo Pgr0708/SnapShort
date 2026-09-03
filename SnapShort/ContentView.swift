@@ -7,13 +7,31 @@ import SwiftUI
 import Photos
 import PhotosUI
 
+// MARK: - Home Photo Filter
+
+enum HomePhotoFilter: String, CaseIterable {
+    case all = "All"
+    case screenshots = "Screenshots"
+    case favorites = "Favorites"
+    
+    var icon: String {
+        switch self {
+        case .all: return "photo.stack"
+        case .screenshots: return "iphone"
+        case .favorites: return "heart.fill"
+        }
+    }
+}
+
 struct ContentView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var settings: SettingsManager
     @StateObject private var viewModel: HomeViewModel
     @StateObject private var photoLibrary = PhotoLibraryManager()
     @StateObject private var speech = SpeechRecognizer()
     @StateObject private var selectionManager = SelectionManager()
     
+    @State private var selectedFilter: HomePhotoFilter = .all
     @State private var selectedPickerItem: PhotosPickerItem?
     @State private var pickedImage: UIImage?
     @State private var showSaveAlert: Bool = false
@@ -307,48 +325,33 @@ struct ContentView: View {
                     .padding(.horizontal, 24)
                     .padding(.top, 6)
                     
-                    // MARK: Action Buttons Row
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            ActionButton(
-                                title: "Find Duplicates",
-                                icon: "doc.on.doc",
-                                color: Color(hex: "#4A5FE8")
-                            ) {
-                                viewModel.promptDuplicateScan()
-                            }
-                            
-                            // Context-aware index button based on search mode
-                            if viewModel.searchMode == .textInImage {
-                                ActionButton(
-                                    title: "Index Text",
-                                    icon: "text.magnifyingglass",
-                                    color: Color(hex: "#0A9396")
-                                ) {
-                                    viewModel.startOCRIndexing()
+                    // MARK: Filter Chips Row
+                    HStack(spacing: 8) {
+                        ForEach(HomePhotoFilter.allCases, id: \.self) { filter in
+                            Button {
+                                withAnimation(.spring(response: 0.25)) {
+                                    selectedFilter = filter
+                                    applyFilter(filter)
                                 }
-                            } else {
-                                ActionButton(
-                                    title: "Tag Photos",
-                                    icon: "photo.on.rectangle.angled",
-                                    color: Color(hex: "#0A9396")
-                                ) {
-                                    viewModel.startContentTagIndexing()
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Image(systemName: filter.icon)
+                                        .font(.system(size: 11, weight: .semibold))
+                                    Text(filter.rawValue)
+                                        .font(.system(size: 12, weight: .semibold))
                                 }
-                            }
-                            
-
-                            ActionButton(
-                                title: "Screenshots",
-                                icon: "iphone",
-                                color: Color(hex: "#E67E22")
-                            ) {
-                                filterScreenshots()
+                                .foregroundStyle(selectedFilter == filter ? .white : Color(hex: "#6B7280"))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 7)
+                                .background(selectedFilter == filter ? Color(hex: "#4A5FE8") : Color.white)
+                                .clipShape(Capsule())
+                                .shadow(color: .black.opacity(selectedFilter == filter ? 0.12 : 0.04), radius: 4, y: 2)
                             }
                         }
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 12)
+                        Spacer()
                     }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 10)
                     
                     // MARK: Main Content
                     if viewModel.activeSearch {
@@ -493,6 +496,26 @@ struct ContentView: View {
             } message: {
                 Text(viewModel.scanError ?? "")
             }
+            // MARK: Failsafe dismiss for background indexing banner
+            .onChange(of: viewModel.backgroundIndexProgress) { newProgress in
+                if newProgress >= 1.0 && viewModel.isBackgroundIndexing {
+                    Task {
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        await MainActor.run {
+                            withAnimation(.easeInOut(duration: 0.35)) {
+                                viewModel.isBackgroundIndexing = false
+                            }
+                        }
+                    }
+                }
+            }
+            // MARK: Auto-refresh when returning from background
+            .onChange(of: scenePhase) { newPhase in
+                if newPhase == .active {
+                    applyFilter(selectedFilter)
+                    viewModel.autoIndexInBackground()
+                }
+            }
         }
     }
     
@@ -560,6 +583,11 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.top, 80)
                 }
+            }
+            .refreshable {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                applyFilter(selectedFilter)
+                viewModel.autoIndexInBackground()
             }
             
             // Multi-select bottom bar
@@ -694,16 +722,24 @@ struct ContentView: View {
         selectedPickerItem = nil
     }
     
-    private func filterScreenshots() {
-        // Re-fetch with screenshot filter
+    private func applyFilter(_ filter: HomePhotoFilter) {
         let options = PHFetchOptions()
-        options.predicate = NSPredicate(
-            format: "mediaSubtype == %ld",
-            PHAssetMediaSubtype.photoScreenshot.rawValue
-        )
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-        let result = PHAsset.fetchAssets(with: .image, options: options)
-        photoLibrary.setAssets(result)
+        switch filter {
+        case .all:
+            photoLibrary.fetchPhotos()
+        case .screenshots:
+            options.predicate = NSPredicate(
+                format: "mediaSubtype == %ld",
+                PHAssetMediaSubtype.photoScreenshot.rawValue
+            )
+            let result = PHAsset.fetchAssets(with: .image, options: options)
+            photoLibrary.setAssets(result)
+        case .favorites:
+            options.predicate = NSPredicate(format: "isFavorite == true")
+            let result = PHAsset.fetchAssets(with: .image, options: options)
+            photoLibrary.setAssets(result)
+        }
     }
 }
 

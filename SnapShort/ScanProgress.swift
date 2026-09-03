@@ -20,7 +20,7 @@ final class ScanProgress: ObservableObject {
     }
     
     /// True once finish() has been called and scanning has stopped.
-    var isFinished: Bool { !isScanning && totalCount > 0 && processedCount >= totalCount }
+    var isFinished: Bool { !isScanning }
     
     func reset(service: String, total: Int) {
         self.currentService = service
@@ -30,7 +30,7 @@ final class ScanProgress: ObservableObject {
         self.isScanning = true
     }
     
-    func update(processed: Int, estimatedSecondsRemaining: TimeInterval) {
+    func update(processed: Int, estimatedSecondsRemaining: TimeInterval = 0) {
         self.processedCount = processed
         self.estimatedSecondsRemaining = estimatedSecondsRemaining
     }

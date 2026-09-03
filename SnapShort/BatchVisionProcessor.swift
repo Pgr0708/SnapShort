@@ -106,6 +106,11 @@ actor BatchVisionProcessor {
                     if activeTasks >= concurrencyLimit {
                         try await group.next()
                         activeTasks -= 1
+                        processedCount += 1
+                        let currentCount = processedCount
+                        await MainActor.run {
+                            progress.update(processed: currentCount)
+                        }
                     }
                     
                     group.addTask {
@@ -123,10 +128,14 @@ actor BatchVisionProcessor {
                 while activeTasks > 0 {
                     try await group.next()
                     activeTasks -= 1
+                    processedCount += 1
+                    let currentCount = processedCount
+                    await MainActor.run {
+                        progress.update(processed: currentCount)
+                    }
                 }
             }
             
-            processedCount += chunk.count
             let chunkDuration = Date().timeIntervalSince(chunkStart)
             let remainingChunks = chunks.count - chunkIndex - 1
             let estimatedRemaining = TimeInterval(remainingChunks) * chunkDuration
@@ -170,12 +179,23 @@ actor BatchVisionProcessor {
         options.isSynchronous = false
         
         return try await withCheckedThrowingContinuation { continuation in
+            var hasResumed = false
             cacheManager.requestImage(
                 for: asset,
                 targetSize: targetSize,
                 contentMode: contentMode,
                 options: options
             ) { image, info in
+                guard !hasResumed else { return }
+                
+                // If opportunistic delivery, ignore intermediate degraded image
+                if deliveryMode == .opportunistic,
+                   let isDegraded = info?[PHImageResultIsDegradedKey] as? Bool,
+                   isDegraded {
+                    return
+                }
+                
+                hasResumed = true
                 if let error = info?[PHImageErrorKey] as? Error {
                     continuation.resume(throwing: error)
                     return
