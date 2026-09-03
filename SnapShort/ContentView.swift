@@ -23,7 +23,7 @@ struct ContentView: View {
     @State private var noteAsset: PHAsset?
     @State private var showDeleteSelectedConfirm: Bool = false
     
-    private let spacing: CGFloat = 5
+    private let spacing: CGFloat = 2
     
     private var columns: [GridItem] {
         [
@@ -131,71 +131,83 @@ struct ContentView: View {
                         }
                         
                         TextField(viewModel.searchMode.placeholder, text: $viewModel.searchQuery)
-                            .font(.system(size: 18))
+                            .font(.system(size: 16))
                             .textFieldStyle(.plain)
                             .submitLabel(.search)
                             .onSubmit {
                                 viewModel.performSearch()
                             }
                         
+                        // Clear button if search query is present
                         if !viewModel.searchQuery.isEmpty {
                             Button {
-                                viewModel.performSearch()
+                                viewModel.clearSearch()
                             } label: {
-                                Text("Search")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(Color(hex: "#4A5FE8"))
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(Color(hex: "#9CA3AF"))
+                            }
+                        }
+                        
+                        // Photo picker upload button
+                        if let image = pickedImage {
+                            ZStack(alignment: .topTrailing) {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 28, height: 28)
+                                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                                
+                                Button {
+                                    pickedImage = nil
+                                    selectedPickerItem = nil
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .background(Color.black.clipShape(Circle()))
+                                }
+                                .offset(x: 3, y: -3)
+                            }
+                            .onTapGesture {
+                                showSaveAlert = true
                             }
                         } else {
-                            // Photo picker upload button
-                            if let image = pickedImage {
-                                ZStack(alignment: .topTrailing) {
-                                    Image(uiImage: image)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 32, height: 32)
-                                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                                    
-                                    Button {
-                                        pickedImage = nil
-                                        selectedPickerItem = nil
-                                    } label: {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.system(size: 12, weight: .bold))
-                                            .foregroundStyle(.white)
-                                            .background(Color.black.clipShape(Circle()))
-                                    }
-                                    .offset(x: 4, y: -4)
-                                }
-                                .onTapGesture {
-                                    showSaveAlert = true
-                                }
-                            } else {
-                                PhotosPicker(selection: $selectedPickerItem, matching: .images) {
-                                    Image(systemName: "square.and.arrow.up")
-                                        .font(.system(size: 20, weight: .medium))
-                                        .foregroundStyle(Color(hex: "#4A5FE8"))
-                                        .frame(width: 32, height: 32)
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .onChange(of: selectedPickerItem) { _, newItem in
-                                    Task {
-                                        if let data = try? await newItem?.loadTransferable(type: Data.self),
-                                           let uiImage = UIImage(data: data) {
-                                            await MainActor.run {
-                                                self.pickedImage = uiImage
-                                                self.customFileName = "Photo_\(Int(Date().timeIntervalSince1970))"
-                                                // Show save dialog as soon as image is picked
-                                                self.showSaveAlert = true
-                                            }
+                            PhotosPicker(selection: $selectedPickerItem, matching: .images) {
+                                Image(systemName: "square.and.arrow.up")
+                                    .font(.system(size: 19, weight: .medium))
+                                    .foregroundStyle(Color(hex: "#4A5FE8"))
+                                    .frame(width: 28, height: 28)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .onChange(of: selectedPickerItem) { _, newItem in
+                                Task {
+                                    if let data = try? await newItem?.loadTransferable(type: Data.self),
+                                       let uiImage = UIImage(data: data) {
+                                        await MainActor.run {
+                                            self.pickedImage = uiImage
+                                            self.customFileName = "Photo_\(Int(Date().timeIntervalSince1970))"
+                                            // Show save dialog as soon as image is picked
+                                            self.showSaveAlert = true
                                         }
                                     }
                                 }
                             }
                         }
+                        
+                        // Magnifying glass icon after upload button that triggers search text
+                        Button {
+                            viewModel.performSearch()
+                        } label: {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 19, weight: .semibold))
+                                .foregroundStyle(Color(hex: "#4A5FE8"))
+                                .frame(width: 32, height: 32)
+                                .contentShape(Rectangle())
+                        }
                     }
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, 18)
                     .frame(height: 64)
                     .background(
                         RoundedRectangle(cornerRadius: 32)
@@ -290,18 +302,7 @@ struct ContentView: View {
                                 }
                             }
                             
-                            ActionButton(
-                                title: "Search Text",
-                                icon: "doc.text.magnifyingglass",
-                                color: Color(hex: "#5C6BC0")
-                            ) {
-                                // Focus on the search bar
-                                if viewModel.searchQuery.isEmpty {
-                                    viewModel.searchQuery = " "
-                                    viewModel.searchQuery = ""
-                                }
-                            }
-                            
+
                             ActionButton(
                                 title: "Screenshots",
                                 icon: "iphone",

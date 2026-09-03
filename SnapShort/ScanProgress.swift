@@ -19,6 +19,9 @@ final class ScanProgress: ObservableObject {
         return Double(processedCount) / Double(totalCount)
     }
     
+    /// True once finish() has been called and scanning has stopped.
+    var isFinished: Bool { !isScanning && totalCount > 0 && processedCount >= totalCount }
+    
     func reset(service: String, total: Int) {
         self.currentService = service
         self.totalCount = total

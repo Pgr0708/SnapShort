@@ -67,7 +67,18 @@ final class HomeViewModel: ObservableObject {
     @Published var allCategories: [SmartCategory] = []
     @Published var categoryCounts: [String: Int] = [:]
     
+    // Clean Up
+    @Published var cleanUpAnalysis: CleanUpAnalysis?
+    @Published var isAnalyzing: Bool = false
+    
+    // Background auto-indexing (shown as a non-intrusive banner)
+    @Published var isBackgroundIndexing: Bool = false
+    @Published var backgroundIndexMessage: String = ""
+    @Published var backgroundIndexProgress: Double = 0.0   // 0…1
+    
     // MARK: - Init
+    
+    private let cleanUpService: CleanUpService
     
     init(
         visionStore: VisionCacheStore,
@@ -75,7 +86,8 @@ final class HomeViewModel: ObservableObject {
         textRecognitionService: TextRecognitionServicing,
         contentSearchService: ContentSearchServicing,
         unifiedSearchService: UnifiedSearchServicing,
-        categorizationService: SmartCategorizationServicing
+        categorizationService: SmartCategorizationServicing,
+        cleanUpService: CleanUpService = CleanUpService()
     ) {
         self.visionStore = visionStore
         self.duplicateService = duplicateService
@@ -83,6 +95,7 @@ final class HomeViewModel: ObservableObject {
         self.contentSearchService = contentSearchService
         self.unifiedSearchService = unifiedSearchService
         self.categorizationService = categorizationService
+        self.cleanUpService = cleanUpService
     }
     
     // MARK: - Duplicate Detection
@@ -160,6 +173,69 @@ final class HomeViewModel: ObservableObject {
             await contentSearchService.indexLibrary(progress: progress)
             self.isScanning = false; self.scanProgress = nil
             self.scanError = "Photo tagging complete! You can now search by objects and scenes."
+        }
+    }
+    
+    // MARK: - Background Auto-Indexing (runs on app launch, incremental / delta only)
+    
+    /// Called once when the app appears. Silently indexes only new/un-cached photos.
+    /// If everything is already indexed it finishes in milliseconds with no banner shown.
+    func autoIndexInBackground() {
+        guard !isBackgroundIndexing else { return }
+        
+        Task(priority: .background) { [weak self] in
+            guard let self else { return }
+            
+            // ── Phase 1: OCR ────────────────────────────────────────────────
+            let ocrProgress = ScanProgress()
+            
+            // Poll progress on MainActor every 300 ms while service runs
+            let ocrPoller = Task { @MainActor in
+                while !ocrProgress.isFinished {
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    let frac = ocrProgress.fractionCompleted
+                    // Only show banner once we know there's work to do (total > 0)
+                    if ocrProgress.totalCount > 0 {
+                        if !self.isBackgroundIndexing {
+                            self.isBackgroundIndexing = true
+                        }
+                        self.backgroundIndexMessage = "Reading text in \(ocrProgress.totalCount) photos…"
+                        self.backgroundIndexProgress = frac * 0.5
+                    }
+                }
+            }
+            await textRecognitionService.indexScreenshots(progress: ocrProgress)
+            ocrPoller.cancel()
+            
+            // ── Phase 2: Vision tagging ──────────────────────────────────────
+            let tagProgress = ScanProgress()
+            
+            let tagPoller = Task { @MainActor in
+                while !tagProgress.isFinished {
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    let frac = tagProgress.fractionCompleted
+                    if tagProgress.totalCount > 0 {
+                        if !self.isBackgroundIndexing {
+                            self.isBackgroundIndexing = true
+                        }
+                        self.backgroundIndexMessage = "Tagging objects in \(tagProgress.totalCount) photos…"
+                        self.backgroundIndexProgress = 0.5 + frac * 0.5
+                    }
+                }
+            }
+            await contentSearchService.indexLibrary(progress: tagProgress)
+            tagPoller.cancel()
+            
+            // ── If nothing was new, skip the banner entirely ─────────────────
+            guard isBackgroundIndexing else { return }
+            
+            // ── Done ────────────────────────────────────────────────────────
+            backgroundIndexProgress = 1.0
+            backgroundIndexMessage = "✓ Search is ready!"
+            try? await Task.sleep(nanoseconds: 2_200_000_000)   // show for 2.2 s then dismiss
+            isBackgroundIndexing = false
+            backgroundIndexProgress = 0.0
+            backgroundIndexMessage = ""
         }
     }
     
@@ -302,5 +378,33 @@ final class HomeViewModel: ObservableObject {
     
     func clearSearch() {
         searchQuery = ""; activeSearch = false; searchResults = []
+    }
+    
+    // MARK: - Clean Up
+    
+    func analyzeForCleanUp() async {
+        isAnalyzing = true
+        
+        // Reuse existing duplicate scan (balanced sensitivity)
+        let progress = ScanProgress()
+        await duplicateService.scanLibrary(sensitivityLevel: .balanced, progress: progress)
+        let clusters = await duplicateService.getDuplicateClusters(sensitivityLevel: .balanced)
+        
+        // Collect duplicate ids (all except recommended keep)
+        var dupeIds: [String] = []
+        for cluster in clusters {
+            let others = cluster.assetIdentifiers.filter { $0 != cluster.recommendedKeepIdentifier }
+            dupeIds.append(contentsOf: others)
+        }
+        
+        // Run CleanUpService analyses in parallel
+        let analysis = await cleanUpService.analyze(existingDuplicateIds: dupeIds)
+        self.cleanUpAnalysis = analysis
+        self.isAnalyzing = false
+    }
+    
+    func identifiers(for type: CleanUpCategoryType) -> [String] {
+        guard let analysis = cleanUpAnalysis else { return [] }
+        return type.identifiers(from: analysis)
     }
 }
