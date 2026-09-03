@@ -23,9 +23,18 @@ struct CategoriesView: View {
     private var filteredCategories: [SmartCategory] {
         let base = viewModel.allCategories
         var result = selectedGroup == .all ? base : base.filter { $0.group == selectedGroup }
-        if showOnlyWithPhotos {
-            result = result.filter { $0.photoCount > 0 }
+        
+        // Always filter out sparse categories (< minimum threshold) UNLESS the user opts to see all,
+        // OR the category is custom (user-created always shows).
+        if !showOnlyWithPhotos {
+            result = result.filter {
+                $0.isCustom || $0.photoCount >= SmartCategory.minimumPhotosToDisplay
+            }
+        } else {
+            // "Show all" mode: still hide categories with zero photos (but show 1-2)
+            result = result.filter { $0.isCustom || $0.photoCount > 0 }
         }
+        
         if !searchText.isEmpty {
             let q = searchText.lowercased()
             result = result.filter {
@@ -35,11 +44,11 @@ struct CategoriesView: View {
                 $0.visionTags.contains { $0.contains(q) }
             }
         }
-        return result
+        return result.sorted { $0.photoCount > $1.photoCount } // Most photos first
     }
 
     private var groups: [CategoryGroup] {
-        [.all, .documents, .screenshots, .lifestyle, .people, .custom]
+        [.all, .documents, .screenshots, .lifestyle, .people, .nature, .custom]
     }
 
     var body: some View {
@@ -85,7 +94,7 @@ struct CategoriesView: View {
                                     .foregroundStyle(Color(hex: "#4A5FE8"))
                             }
                             Text(totalCategorized > 0
-                                 ? "\(totalCategorized) photo\(totalCategorized == 1 ? "" : "s") sorted across \(activeCount) categories"
+                                 ? "\(totalCategorized) photo\(totalCategorized == 1 ? "" : "s") in \(activeCount) categories"
                                  : "Auto-categorizing photos…")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(Color(hex: "#4B5563"))
@@ -101,13 +110,17 @@ struct CategoriesView: View {
                             HStack(spacing: 4) {
                                 Image(systemName: showOnlyWithPhotos ? "checkmark.circle.fill" : "circle")
                                     .font(.system(size: 11))
-                                Text("With Photos")
+                                Text(showOnlyWithPhotos ? "1+ Photos" : "3+ Photos")
                                     .font(.system(size: 11, weight: .semibold))
                             }
-                            .foregroundStyle(showOnlyWithPhotos ? Color(hex: "#4A5FE8") : Color(hex: "#6B7280"))
+                            .foregroundStyle(showOnlyWithPhotos ? Color(hex: "#F59E0B") : Color(hex: "#4A5FE8"))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
-                            .background(showOnlyWithPhotos ? Color(hex: "#4A5FE8").opacity(0.12) : Color.white)
+                            .background(
+                                showOnlyWithPhotos
+                                    ? Color(hex: "#F59E0B").opacity(0.12)
+                                    : Color(hex: "#4A5FE8").opacity(0.10)
+                            )
                             .clipShape(Capsule())
                             .shadow(color: .black.opacity(0.03), radius: 3, y: 1)
                         }
@@ -135,12 +148,15 @@ struct CategoriesView: View {
                                 Image(systemName: "square.grid.2x2")
                                     .font(.system(size: 44))
                                     .foregroundStyle(Color(hex: "#D1D5DB"))
-                                Text(showOnlyWithPhotos ? "No categories with photos yet" : (searchText.isEmpty ? "No categories" : "No results for \"\(searchText)\""))
+                                Text(searchText.isEmpty
+                                     ? (showOnlyWithPhotos ? "No categories with 1+ photos" : "No categories with 3+ photos yet")
+                                     : "No results for \"\(searchText)\"")
                                     .font(.system(size: 16, weight: .medium))
                                     .foregroundStyle(Color(hex: "#9CA3AF"))
-                                if showOnlyWithPhotos {
-                                    Button("Show All Categories") {
-                                        withAnimation { showOnlyWithPhotos = false }
+                                    .multilineTextAlignment(.center)
+                                if searchText.isEmpty {
+                                    Button(showOnlyWithPhotos ? "Raise threshold to 3+" : "Show 1-2 photo categories") {
+                                        withAnimation { showOnlyWithPhotos.toggle() }
                                     }
                                     .font(.system(size: 13, weight: .semibold))
                                     .foregroundStyle(Color(hex: "#4A5FE8"))

@@ -13,6 +13,7 @@ enum CategoryGroup: String, CaseIterable, Identifiable {
     case screenshots = "Screenshots"
     case lifestyle   = "Lifestyle"
     case people      = "People"
+    case nature      = "Nature"
     case custom      = "My Categories"
     
     var id: String { rawValue }
@@ -24,6 +25,7 @@ enum CategoryGroup: String, CaseIterable, Identifiable {
         case .screenshots: return "iphone"
         case .lifestyle:   return "heart.fill"
         case .people:      return "person.2.fill"
+        case .nature:      return "leaf.fill"
         case .custom:      return "star.fill"
         }
     }
@@ -61,25 +63,39 @@ struct SmartCategory: Identifiable, Hashable {
     var gradientColors: [Color] {
         switch id {
         case "receipts":
-            return [Color(hex: "#FF5E62"), Color(hex: "#FF9966")] // Vibrant Coral Sunset
+            return [Color(hex: "#FF5E62"), Color(hex: "#FF9966")] // Coral Sunset
         case "chats":
-            return [Color(hex: "#00B09B"), Color(hex: "#96C93D")] // WhatsApp Electric Green
+            return [Color(hex: "#00B09B"), Color(hex: "#96C93D")] // WhatsApp Green
         case "ids":
-            return [Color(hex: "#2193B0"), Color(hex: "#6DD5ED")] // Crisp Azure Cyan
+            return [Color(hex: "#2193B0"), Color(hex: "#6DD5ED")] // Azure Cyan
         case "memes":
-            return [Color(hex: "#F7971E"), Color(hex: "#FFD200")] // Joyful Sunshine Gold
+            return [Color(hex: "#F7971E"), Color(hex: "#FFD200")] // Sunshine Gold
         case "food":
-            return [Color(hex: "#FF416C"), Color(hex: "#FFA07A")] // Delicious Flame
+            return [Color(hex: "#FF416C"), Color(hex: "#FFA07A")] // Flame
         case "selfies":
-            return [Color(hex: "#FF758C"), Color(hex: "#FF7EB3")] // Glowing Rose Pink
+            return [Color(hex: "#FF758C"), Color(hex: "#FF7EB3")] // Rose Pink
         case "family":
-            return [Color(hex: "#FA709A"), Color(hex: "#FEE140")] // Warm Sunset Coral
+            return [Color(hex: "#FA709A"), Color(hex: "#FEE140")] // Warm Coral
         case "pets":
-            return [Color(hex: "#F39060"), Color(hex: "#FFB03A")] // Golden Pup Amber
+            return [Color(hex: "#F39060"), Color(hex: "#FFB03A")] // Golden Amber
         case "travel":
-            return [Color(hex: "#00C6FB"), Color(hex: "#005BEA")] // Aero Sky to Ocean
+            return [Color(hex: "#00C6FB"), Color(hex: "#005BEA")] // Sky Ocean
         case "notes":
-            return [Color(hex: "#667EEA"), Color(hex: "#764BA2")] // Royal Indigo Violet
+            return [Color(hex: "#667EEA"), Color(hex: "#764BA2")] // Indigo Violet
+        case "maps":
+            return [Color(hex: "#11998E"), Color(hex: "#38EF7D")] // Map Fresh Mint
+        case "qrcodes":
+            return [Color(hex: "#2C3E50"), Color(hex: "#4CA1AF")] // Dark Slate Cyan
+        case "wallpapers":
+            return [Color(hex: "#8A2387"), Color(hex: "#F27121")] // Neon Magenta Sunset
+        case "nature":
+            return [Color(hex: "#56AB2F"), Color(hex: "#A8E063")] // Forest Lime
+        case "fitness":
+            return [Color(hex: "#F953C6"), Color(hex: "#B91D73")] // Electric Magenta
+        case "shopping":
+            return [Color(hex: "#FC5C7D"), Color(hex: "#6A82FB")] // Candy Purple
+        case "screenshots":
+            return [Color(hex: "#4A5FE8"), Color(hex: "#7B5EA7")] // SnapShort Purple
         default:
             return fallbackGradient(for: colorHex)
         }
@@ -285,6 +301,138 @@ extension SmartCategory {
             ],
             isCustom: false,
             photoCount: 0
+        ),
+        
+        // --- Background / Secondary Categories ---
+        // (Only shown automatically if ≥ 3 photos match)
+        
+        // 11. Maps & Navigation
+        SmartCategory(
+            id: "maps",
+            name: "Maps & Navigation",
+            emoji: "🗺️",
+            icon: "map.fill",
+            colorHex: "#11998E",
+            group: .screenshots,
+            visionTags: ["map"],
+            ocrKeywords: [
+                "google maps", "apple maps", "directions", "navigate", "route",
+                "km", "miles", "eta", "turn left", "turn right", "uber", "ola",
+                "your location", "traffic", "destination"
+            ],
+            isCustom: false,
+            photoCount: 0
+        ),
+        
+        // 12. QR Codes & Barcodes
+        SmartCategory(
+            id: "qrcodes",
+            name: "QR & Barcodes",
+            emoji: "🔳",
+            icon: "qrcode",
+            colorHex: "#2C3E50",
+            group: .documents,
+            visionTags: ["qr code", "barcode"],
+            ocrKeywords: [
+                "scan", "qr", "barcode", "upi", "gpay", "phonepay", "scan to pay",
+                "scan me", "scan here", "scan this"
+            ],
+            isCustom: false,
+            photoCount: 0
+        ),
+        
+        // 13. Wallpapers & Art
+        SmartCategory(
+            id: "wallpapers",
+            name: "Wallpapers & Art",
+            emoji: "🎨",
+            icon: "photo.artframe",
+            colorHex: "#8A2387",
+            group: .nature,
+            visionTags: [
+                "abstract", "illustration", "digital art", "wallpaper", "painting",
+                "artwork", "graphic", "minimalism", "texture", "pattern"
+            ],
+            ocrKeywords: [],
+            isCustom: false,
+            photoCount: 0
+        ),
+        
+        // 14. Nature & Outdoors
+        SmartCategory(
+            id: "nature",
+            name: "Nature & Outdoors",
+            emoji: "🌿",
+            icon: "leaf.fill",
+            colorHex: "#56AB2F",
+            group: .nature,
+            visionTags: [
+                "nature", "tree", "forest", "flower", "plant", "garden",
+                "sky", "cloud", "rain", "snow", "waterfall", "river",
+                "field", "grass", "valley", "jungle", "park"
+            ],
+            ocrKeywords: [],
+            isCustom: false,
+            photoCount: 0
+        ),
+        
+        // 15. Fitness & Workouts
+        SmartCategory(
+            id: "fitness",
+            name: "Fitness & Workouts",
+            emoji: "💪",
+            icon: "figure.run",
+            colorHex: "#F953C6",
+            group: .lifestyle,
+            visionTags: [
+                "gym", "exercise", "yoga", "running", "cycling", "sports",
+                "fitness", "weightlifting", "workout", "training"
+            ],
+            ocrKeywords: [
+                "steps", "calories", "km run", "workout", "fitness", "gym",
+                "apple fitness", "health", "bmi", "reps", "sets", "personal best"
+            ],
+            isCustom: false,
+            photoCount: 0
+        ),
+        
+        // 16. Shopping & Apps
+        SmartCategory(
+            id: "shopping",
+            name: "Shopping & Apps",
+            emoji: "🛍️",
+            icon: "bag.fill",
+            colorHex: "#FC5C7D",
+            group: .screenshots,
+            visionTags: [],
+            ocrKeywords: [
+                "add to cart", "buy now", "checkout", "wishlist", "offer",
+                "discount", "sale", "% off", "flip kart", "flipkart", "meesho",
+                "myntra", "ajio", "nykaa", "zomato", "swiggy", "app store"
+            ],
+            isCustom: false,
+            photoCount: 0
+        ),
+        
+        // 17. App Screenshots
+        SmartCategory(
+            id: "screenshots",
+            name: "App Screenshots",
+            emoji: "📱",
+            icon: "iphone",
+            colorHex: "#4A5FE8",
+            group: .screenshots,
+            visionTags: [],
+            ocrKeywords: [
+                "battery", "signal", "wi-fi", "settings", "notifications",
+                "home screen", "lock screen"
+            ],
+            isCustom: false,
+            photoCount: 0
         )
     ]
+    
+    /// Minimum number of photos a category needs before it is shown in the grid.
+    /// Custom categories always show regardless.
+    static let minimumPhotosToDisplay: Int = 3
 }
