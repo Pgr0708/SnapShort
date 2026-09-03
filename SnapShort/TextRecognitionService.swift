@@ -125,10 +125,10 @@ actor TextRecognitionService: TextRecognitionServicing {
                 try await batchProcessor.process(
                     assets: assetArray,
                     recordType: .ocrText,
-                    chunkSize: 25,
-                    targetSize: CGSize(width: 1600, height: 1600),
+                    chunkSize: 50,
+                    targetSize: CGSize(width: 800, height: 800),
                     contentMode: .aspectFit,
-                    deliveryMode: .highQualityFormat,
+                    deliveryMode: .fastFormat,
                     progress: progress,
                     serviceName: "TextRecognition"
                 ) { asset, image in

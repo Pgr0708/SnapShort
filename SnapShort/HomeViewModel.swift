@@ -247,8 +247,15 @@ final class HomeViewModel: ObservableObject {
             if hasOCRWork {
                 let ocrProgress = ScanProgress()
                 let ocrPoller = Task { @MainActor in
-                    while !ocrProgress.isFinished {
-                        try? await Task.sleep(nanoseconds: 80_000_000) // 80ms poll
+                    // Wait for scanning to actually start (reset() sets isScanning=true)
+                    while !ocrProgress.isScanning {
+                        try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                        if Task.isCancelled { return }
+                    }
+                    // Now poll until finished
+                    while ocrProgress.isScanning {
+                        try? await Task.sleep(nanoseconds: 200_000_000) // 200ms poll
+                        if Task.isCancelled { return }
                         let frac = ocrProgress.fractionCompleted
                         self.ocrIndexProgress = frac
                         self.backgroundIndexMessage = "Scanning text (\(ocrProgress.processedCount)/\(ocrProgress.totalCount))…"
@@ -273,8 +280,15 @@ final class HomeViewModel: ObservableObject {
                 let weight = hasOCRWork ? 0.5 : 1.0
                 
                 let tagPoller = Task { @MainActor in
-                    while !tagProgress.isFinished {
-                        try? await Task.sleep(nanoseconds: 80_000_000) // 80ms poll
+                    // Wait for scanning to actually start
+                    while !tagProgress.isScanning {
+                        try? await Task.sleep(nanoseconds: 50_000_000)
+                        if Task.isCancelled { return }
+                    }
+                    // Now poll until finished
+                    while tagProgress.isScanning {
+                        try? await Task.sleep(nanoseconds: 200_000_000)
+                        if Task.isCancelled { return }
                         let frac = tagProgress.fractionCompleted
                         self.backgroundIndexMessage = "Tagging objects (\(tagProgress.processedCount)/\(tagProgress.totalCount))…"
                         self.backgroundIndexProgress = baseProgress + frac * weight

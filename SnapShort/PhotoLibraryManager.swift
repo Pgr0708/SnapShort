@@ -15,6 +15,9 @@ final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChang
 
     @Published private(set) var assets: PHFetchResult<PHAsset>?
     
+    /// The currently active filter predicate — used to re-apply after library changes.
+    private var currentFilterPredicate: NSPredicate?
+    
     override init() {
         super.init()
         PHPhotoLibrary.shared().register(self)
@@ -30,8 +33,8 @@ final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChang
         Task { @MainActor in
             guard let current = self.assets,
                   let details = changeInstance.changeDetails(for: current) else {
-                // If library had empty assets or structure reset, re-fetch
-                self.fetchPhotos()
+                // If library had empty assets or structure reset, re-fetch with current filter
+                self.refetch()
                 return
             }
             self.assets = details.fetchResultAfterChanges
@@ -40,11 +43,18 @@ final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChang
     }
     
     /// Override the current fetch result (e.g. to show only screenshots or favorites).
-    func setAssets(_ result: PHFetchResult<PHAsset>) {
+    func setAssets(_ result: PHFetchResult<PHAsset>, predicate: NSPredicate? = nil) {
+        currentFilterPredicate = predicate
         assets = result
     }
 
     func fetchPhotos() {
+        currentFilterPredicate = nil
+        refetch()
+    }
+    
+    /// Internal re-fetch that preserves the current filter.
+    private func refetch() {
         let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
 
         guard status == .authorized || status == .limited else {
@@ -59,6 +69,10 @@ final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChang
                 ascending: false
             )
         ]
+        
+        if let predicate = currentFilterPredicate {
+            options.predicate = predicate
+        }
 
         assets = PHAsset.fetchAssets(
             with: .image,

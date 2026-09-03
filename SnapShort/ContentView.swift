@@ -159,6 +159,7 @@ struct ContentView: View {
                         )
                         .font(.system(size: 15))
                         .textFieldStyle(.plain)
+                        .foregroundStyle(.black)
                         .submitLabel(.search)
                         .disabled(isTextSearchLocked)
                         .onSubmit {
@@ -517,6 +518,11 @@ struct ContentView: View {
                 }
             }
         }
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
+        )
     }
     
     // MARK: - Photo Grid
@@ -559,8 +565,13 @@ struct ContentView: View {
                     }
                     .simultaneousGesture(
                         selectionManager.isSelecting ?
-                        DragGesture(minimumDistance: 4, coordinateSpace: .global)
+                        DragGesture(minimumDistance: 20, coordinateSpace: .global)
                             .onChanged { value in
+                                // Only do drag-select when dragging more horizontally than vertically
+                                let dx = abs(value.translation.width)
+                                let dy = abs(value.translation.height)
+                                guard dx > dy else { return } // vertical = scroll, not select
+                                
                                 let loc = value.location
                                 for (id, frame) in cellFrames {
                                     if frame.contains(loc) {
@@ -729,16 +740,18 @@ struct ContentView: View {
         case .all:
             photoLibrary.fetchPhotos()
         case .screenshots:
-            options.predicate = NSPredicate(
+            let predicate = NSPredicate(
                 format: "mediaSubtype == %ld",
                 PHAssetMediaSubtype.photoScreenshot.rawValue
             )
+            options.predicate = predicate
             let result = PHAsset.fetchAssets(with: .image, options: options)
-            photoLibrary.setAssets(result)
+            photoLibrary.setAssets(result, predicate: predicate)
         case .favorites:
-            options.predicate = NSPredicate(format: "isFavorite == true")
+            let predicate = NSPredicate(format: "isFavorite == true")
+            options.predicate = predicate
             let result = PHAsset.fetchAssets(with: .image, options: options)
-            photoLibrary.setAssets(result)
+            photoLibrary.setAssets(result, predicate: predicate)
         }
     }
 }

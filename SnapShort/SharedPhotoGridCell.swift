@@ -128,22 +128,29 @@ struct SharedPhotoGridCell: View {
         }
         .aspectRatio(1, contentMode: .fit)
         .animation(.spring(response: 0.2), value: isSelected)
-        .task(id: asset.localIdentifier) {
-            guard thumbnail == nil else { return }
-            thumbnail = await loadThumbnail(for: asset)
+        .onAppear {
+            if thumbnail == nil {
+                loadThumbnail(for: asset)
+            }
+        }
+        .onChange(of: asset.localIdentifier) { _ in
+            thumbnail = nil
+            loadThumbnail(for: asset)
         }
     }
     
-    private func loadThumbnail(for asset: PHAsset) async -> UIImage? {
-        await withCheckedContinuation { continuation in
-            let scale = UIScreen.main.scale
-            let size = CGSize(width: 120 * scale, height: 120 * scale)
-            let options = PHImageRequestOptions()
-            options.deliveryMode = .opportunistic
-            options.resizeMode = .fast
-            options.isNetworkAccessAllowed = true
-            PHImageManager.default().requestImage(for: asset, targetSize: size, contentMode: .aspectFill, options: options) { img, _ in
-                continuation.resume(returning: img)
+    private func loadThumbnail(for asset: PHAsset) {
+        let scale = UIScreen.main.scale
+        let size = CGSize(width: 120 * scale, height: 120 * scale)
+        let options = PHImageRequestOptions()
+        options.deliveryMode = .opportunistic
+        options.resizeMode = .fast
+        options.isNetworkAccessAllowed = true
+        PHImageManager.default().requestImage(for: asset, targetSize: size, contentMode: .aspectFill, options: options) { img, _ in
+            DispatchQueue.main.async {
+                if let img = img {
+                    self.thumbnail = img
+                }
             }
         }
     }

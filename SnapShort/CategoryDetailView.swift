@@ -138,19 +138,32 @@ struct CategoryDetailView: View {
 
     private var headerView: some View {
         HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: category.gradientColors,
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+            if let uiImage = UIImage(named: "cat_\(category.id)") {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 64, height: 48)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.black.opacity(0.06), lineWidth: 0.5)
                     )
-                    .frame(width: 54, height: 54)
-                    .shadow(color: category.gradientColors.first?.opacity(0.35) ?? .clear, radius: 6, y: 3)
-                Text(category.emoji)
-                    .font(.system(size: 28))
+                    .shadow(color: .black.opacity(0.12), radius: 5, y: 2)
+            } else {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: category.gradientColors,
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 54, height: 54)
+                        .shadow(color: category.gradientColors.first?.opacity(0.35) ?? .clear, radius: 6, y: 3)
+                    Text(category.emoji)
+                        .font(.system(size: 28))
+                }
             }
             
             VStack(alignment: .leading, spacing: 2) {

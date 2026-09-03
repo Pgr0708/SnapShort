@@ -308,23 +308,32 @@ private struct CleanUpCell: View {
         }
         .aspectRatio(1, contentMode: .fit)
         .animation(.spring(response: 0.2), value: isSelected)
-        .task(id: asset.localIdentifier) {
-            guard thumbnail == nil else { return }
-            thumbnail = await loadThumb()
+        .onAppear {
+            if thumbnail == nil {
+                loadThumb()
+            }
+        }
+        .onChange(of: asset.localIdentifier) { _ in
+            thumbnail = nil
+            loadThumb()
         }
     }
 
-    private func loadThumb() async -> UIImage? {
-        await withCheckedContinuation { cont in
-            let opts             = PHImageRequestOptions()
-            opts.deliveryMode    = .opportunistic
-            opts.isNetworkAccessAllowed = true
-            PHImageManager.default().requestImage(
-                for: asset,
-                targetSize: CGSize(width: 120, height: 120),
-                contentMode: .aspectFill,
-                options: opts
-            ) { img, _ in cont.resume(returning: img) }
+    private func loadThumb() {
+        let opts = PHImageRequestOptions()
+        opts.deliveryMode = .opportunistic
+        opts.isNetworkAccessAllowed = true
+        PHImageManager.default().requestImage(
+            for: asset,
+            targetSize: CGSize(width: 120, height: 120),
+            contentMode: .aspectFill,
+            options: opts
+        ) { img, _ in
+            DispatchQueue.main.async {
+                if let img = img {
+                    self.thumbnail = img
+                }
+            }
         }
     }
 }

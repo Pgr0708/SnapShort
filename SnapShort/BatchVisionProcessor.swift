@@ -59,7 +59,7 @@ actor BatchVisionProcessor {
             progress.reset(service: serviceName, total: unprocessedAssets.count)
         }
         
-        let concurrencyLimit = max(1, min(ProcessInfo.processInfo.activeProcessorCount, 4))
+        let concurrencyLimit = max(2, min(ProcessInfo.processInfo.activeProcessorCount, 6))
         let total = unprocessedAssets.count
         var processedCount = 0
         let chunks = unprocessedAssets.chunked(into: chunkSize)

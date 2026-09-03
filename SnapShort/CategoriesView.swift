@@ -282,6 +282,11 @@ struct CategoriesView: View {
                 }
             }
         }
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
+        )
     }
 }
 
@@ -324,32 +329,58 @@ private struct CategoryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topTrailing) {
-                // Background linear gradient
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(LinearGradient(
-                        colors: category.gradientColors,
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    ))
-                    .frame(height: 84)
-                    // Glass shine highlight overlay
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color.white.opacity(0.28), Color.white.opacity(0.0)],
-                                    startPoint: .top,
-                                    endPoint: .center
+                if let uiImage = UIImage(named: "cat_\(category.id)") {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(height: 94)
+                        .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.black.opacity(0.06), lineWidth: 0.5)
+                        )
+                } else {
+                    // Background linear gradient fallback
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(LinearGradient(
+                            colors: category.gradientColors,
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        ))
+                        .frame(height: 94)
+                        // Glass shine highlight overlay
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.white.opacity(0.28), Color.white.opacity(0.0)],
+                                        startPoint: .top,
+                                        endPoint: .center
+                                    )
                                 )
-                            )
-                    )
-                    .shadow(color: category.gradientColors.first?.opacity(0.32) ?? Color.black.opacity(0.08), radius: 6, y: 3)
+                        )
+                        .shadow(color: category.gradientColors.first?.opacity(0.32) ?? Color.black.opacity(0.08), radius: 6, y: 3)
 
-                // Emoji floating with subtle depth shadow
-                Text(category.emoji)
-                    .font(.system(size: 38))
-                    .shadow(color: Color.black.opacity(0.18), radius: 3, y: 2)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding()
+                    if category.isCustom {
+                        ZStack {
+                            Circle()
+                                .fill(Color.white.opacity(0.25))
+                                .frame(width: 50, height: 50)
+                            Image(systemName: category.icon)
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundStyle(.white)
+                                .shadow(color: Color.black.opacity(0.2), radius: 3, y: 2)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        // Emoji floating with subtle depth shadow
+                        Text(category.emoji)
+                            .font(.system(size: 38))
+                            .shadow(color: Color.black.opacity(0.18), radius: 3, y: 2)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding()
+                    }
+                }
 
                 // Photo count pill (top trailing)
                 if category.photoCount > 0 {
