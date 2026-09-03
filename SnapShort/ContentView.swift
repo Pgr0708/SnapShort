@@ -22,6 +22,7 @@ struct ContentView: View {
     @State private var selectedAsset: PHAsset?
     @State private var noteAsset: PHAsset?
     @State private var showDeleteSelectedConfirm: Bool = false
+    @State private var cellFrames: [String: CGRect] = [:]
     
     private let spacing: CGFloat = 2
     
@@ -130,13 +131,21 @@ struct ContentView: View {
                             }
                         }
                         
-                        TextField(viewModel.searchMode.placeholder, text: $viewModel.searchQuery)
-                            .font(.system(size: 16))
-                            .textFieldStyle(.plain)
-                            .submitLabel(.search)
-                            .onSubmit {
-                                viewModel.performSearch()
-                            }
+                        let isTextSearchLocked = (viewModel.searchMode == .textInImage && !viewModel.isOCRComplete)
+                        
+                        TextField(
+                            isTextSearchLocked
+                                ? "Scanning text in photos (\(Int(viewModel.ocrIndexProgress * 100))%)..."
+                                : viewModel.searchMode.placeholder,
+                            text: $viewModel.searchQuery
+                        )
+                        .font(.system(size: 15))
+                        .textFieldStyle(.plain)
+                        .submitLabel(.search)
+                        .disabled(isTextSearchLocked)
+                        .onSubmit {
+                            viewModel.performSearch()
+                        }
                         
                         // Clear button if search query is present
                         if !viewModel.searchQuery.isEmpty {
@@ -198,14 +207,19 @@ struct ContentView: View {
                         
                         // Magnifying glass icon after upload button that triggers search text
                         Button {
+                            if isTextSearchLocked {
+                                viewModel.scanError = "Text in photos is still being scanned (\(Int(viewModel.ocrIndexProgress * 100))%). \"Text in Image\" search will unlock once complete."
+                                return
+                            }
                             viewModel.performSearch()
                         } label: {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 19, weight: .semibold))
-                                .foregroundStyle(Color(hex: "#4A5FE8"))
+                            Image(systemName: isTextSearchLocked ? "lock.fill" : "magnifyingglass")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(isTextSearchLocked ? Color.orange : Color(hex: "#4A5FE8"))
                                 .frame(width: 32, height: 32)
                                 .contentShape(Rectangle())
                         }
+                        .disabled(isTextSearchLocked)
                     }
                     .padding(.horizontal, 18)
                     .frame(height: 64)
@@ -242,19 +256,40 @@ struct ContentView: View {
                     // MARK: Search Mode Toggle
                     HStack(spacing: 0) {
                         ForEach(SearchMode.allCases, id: \.self) { mode in
+                            let isLocked = (mode == .textInImage && !viewModel.isOCRComplete)
                             Button {
+                                if isLocked {
+                                    viewModel.scanError = "Scanning text in photos is in progress (\(Int(viewModel.ocrIndexProgress * 100))%). \"Text in Image\" search will unlock automatically as soon as scanning finishes."
+                                    return
+                                }
                                 withAnimation(.spring(response: 0.3)) {
                                     viewModel.searchMode = mode
                                     viewModel.clearSearch()
                                 }
                             } label: {
                                 HStack(spacing: 5) {
-                                    Image(systemName: mode.icon)
-                                        .font(.system(size: 11, weight: .semibold))
+                                    if isLocked {
+                                        Image(systemName: "lock.fill")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundStyle(Color.orange)
+                                    } else {
+                                        Image(systemName: mode.icon)
+                                            .font(.system(size: 11, weight: .semibold))
+                                    }
                                     Text(mode.rawValue)
                                         .font(.system(size: 12, weight: .semibold))
+                                    
+                                    if isLocked {
+                                        Text("(\(Int(viewModel.ocrIndexProgress * 100))%)")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundStyle(Color.orange)
+                                    }
                                 }
-                                .foregroundStyle(viewModel.searchMode == mode ? .white : Color(hex: "#6B7280"))
+                                .foregroundStyle(
+                                    isLocked
+                                        ? Color.gray
+                                        : (viewModel.searchMode == mode ? .white : Color(hex: "#6B7280"))
+                                )
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 7)
                                 .background(
@@ -321,12 +356,22 @@ struct ContentView: View {
                     } else {
                         photoGridView
                     }
+                    
+                    // MARK: Bottom Indexing Banner (Docked above TabBar, TabBar stays 100% visible)
+                    if viewModel.isBackgroundIndexing {
+                        IndexingBanner(
+                            message: viewModel.backgroundIndexMessage,
+                            progress: viewModel.backgroundIndexProgress
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 6)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
                 
                 // MARK: Progress Overlay
                 if viewModel.isScanning, let progress = viewModel.scanProgress {
                     Color.black.opacity(0.4)
-                        .ignoresSafeArea()
                     
                     VStack(spacing: 20) {
                         Image(systemName: "gearshape.2")
@@ -486,6 +531,25 @@ struct ContentView: View {
                     }
                     .padding(.horizontal, spacing)
                     .padding(.bottom, selectionManager.isSelecting ? 90 : 16)
+                    .onPreferenceChange(PhotoCellFrameKey.self) { frames in
+                        self.cellFrames = frames
+                    }
+                    .simultaneousGesture(
+                        selectionManager.isSelecting ?
+                        DragGesture(minimumDistance: 4, coordinateSpace: .global)
+                            .onChanged { value in
+                                let loc = value.location
+                                for (id, frame) in cellFrames {
+                                    if frame.contains(loc) {
+                                        if !selectionManager.isSelected(id) {
+                                            selectionManager.select(id)
+                                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        }
+                                    }
+                                }
+                            }
+                        : nil
+                    )
                 } else {
                     VStack(spacing: 16) {
                         ProgressView().scaleEffect(1.5)
@@ -548,32 +612,46 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, 80)
             } else if viewModel.searchResults.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 48))
-                        .foregroundStyle(Color(hex: "#C4C6D6"))
-                    Text("No results found")
-                        .font(.headline)
-                        .foregroundStyle(Color(hex: "#757686"))
-                    Text("Try \"Index Text\" first, then search for words inside your screenshots.")
-                        .font(.subheadline)
-                        .foregroundStyle(Color(hex: "#757686").opacity(0.7))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 40)
-                    
-                    Button {
-                        viewModel.startOCRIndexing()
-                        viewModel.clearSearch()
-                    } label: {
-                        Label("Index Text Now", systemImage: "text.magnifyingglass")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(Color(hex: "#0A9396"))
-                            .clipShape(Capsule())
+                VStack(spacing: 14) {
+                    if viewModel.searchMode == .textInImage && !viewModel.isOCRComplete {
+                        Image(systemName: "lock.shield.fill")
+                            .font(.system(size: 48))
+                            .foregroundStyle(Color.orange)
+                        Text("Scanning Text in Photos")
+                            .font(.headline)
+                            .foregroundStyle(Color(hex: "#1A1A2E"))
+                        Text("We are extracting text from all photos to provide accurate search results. \"Text in Image\" unlocks once complete (\(Int(viewModel.ocrIndexProgress * 100))%).")
+                            .font(.subheadline)
+                            .foregroundStyle(Color(hex: "#757686"))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                    } else {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 48))
+                            .foregroundStyle(Color(hex: "#C4C6D6"))
+                        Text("No results found")
+                            .font(.headline)
+                            .foregroundStyle(Color(hex: "#757686"))
+                        Text("Try \"Index Text\" first, then search for words inside your screenshots.")
+                            .font(.subheadline)
+                            .foregroundStyle(Color(hex: "#757686").opacity(0.7))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                        
+                        Button {
+                            viewModel.startOCRIndexing()
+                            viewModel.clearSearch()
+                        } label: {
+                            Label("Index Text Now", systemImage: "text.magnifyingglass")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(Color(hex: "#0A9396"))
+                                .clipShape(Capsule())
+                        }
+                        .padding(.top, 8)
                     }
-                    .padding(.top, 8)
                 }
                 .padding(.top, 60)
             } else {

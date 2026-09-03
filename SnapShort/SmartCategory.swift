@@ -69,6 +69,177 @@ struct SmartCategory: Identifiable, Hashable {
     
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
     static func == (lhs: SmartCategory, rhs: SmartCategory) -> Bool { lhs.id == rhs.id }
+    
+    // MARK: - Curated Linear Gradients
+    
+    var gradientColors: [Color] {
+        switch id {
+        // Documents & Finance
+        case "receipts":
+            return [Color(hex: "#FF5E62"), Color(hex: "#FF9966")] // Vibrant Coral Sunset
+        case "finance":
+            return [Color(hex: "#0575E6"), Color(hex: "#00F260")] // Electric Blue to Emerald
+        case "invoices":
+            return [Color(hex: "#4E54C8"), Color(hex: "#8F94FB")] // Royal Indigo Lavender
+        case "ids":
+            return [Color(hex: "#2193B0"), Color(hex: "#6DD5ED")] // Crisp Azure Cyan
+        case "contracts":
+            return [Color(hex: "#8A2387"), Color(hex: "#E94057")] // Deep Magenta Coral
+        case "tickets":
+            return [Color(hex: "#F97316"), Color(hex: "#FBBF24")] // Vibrant Amber Gold
+        case "resumes":
+            return [Color(hex: "#11998E"), Color(hex: "#38EF7D")] // Mint to Fresh Green
+        case "business_cards":
+            return [Color(hex: "#3A7BD5"), Color(hex: "#3A6073")] // Steel Blue
+        case "coupons":
+            return [Color(hex: "#ED213A"), Color(hex: "#93291E")] // Ruby Red
+        case "qrcodes":
+            return [Color(hex: "#2C3E50"), Color(hex: "#4CA1AF")] // Deep Charcoal to Slate
+            
+        // Screenshots & Digital
+        case "app_screenshots":
+            return [Color(hex: "#4A5FE8"), Color(hex: "#7B5EA7")] // SnapShort Signature Purple
+        case "chats":
+            return [Color(hex: "#00B09B"), Color(hex: "#96C93D")] // WhatsApp Fresh Green
+        case "webpages":
+            return [Color(hex: "#0072FF"), Color(hex: "#00C6FF")] // Safari Cyan Blue
+        case "memes":
+            return [Color(hex: "#F7971E"), Color(hex: "#FFD200")] // Joyful Sunshine Yellow
+        case "code":
+            return [Color(hex: "#1F1C2C"), Color(hex: "#928DAB")] // Dark Cyber Matrix
+        case "wallpapers":
+            return [Color(hex: "#8E2DE2"), Color(hex: "#4A00E0")] // Cosmic Purple
+        case "gaming":
+            return [Color(hex: "#7F00FF"), Color(hex: "#E100FF")] // Neon Cyber Violet
+        case "errors":
+            return [Color(hex: "#FF416C"), Color(hex: "#FF4B2B")] // Warning Flame Red
+            
+        // Food & Drinks
+        case "food":
+            return [Color(hex: "#FF416C"), Color(hex: "#FFA07A")] // Tasty Coral
+        case "recipes":
+            return [Color(hex: "#F7971E"), Color(hex: "#FF7730")] // Kitchen Warm Flame
+        case "coffee":
+            return [Color(hex: "#795548"), Color(hex: "#C5A059")] // Rich Mocha Cream
+        case "desserts":
+            return [Color(hex: "#F72585"), Color(hex: "#FF758C")] // Candy Strawberry Pink
+        case "groceries":
+            return [Color(hex: "#56AB2F"), Color(hex: "#A8E063")] // Fresh Organic Green
+        case "drinks":
+            return [Color(hex: "#8A2387"), Color(hex: "#E94057")] // Sangria Wine
+            
+        // People & Events
+        case "selfies":
+            return [Color(hex: "#FF758C"), Color(hex: "#FF7EB3")] // Glowing Peach Pink
+        case "family":
+            return [Color(hex: "#FA709A"), Color(hex: "#FEE140")] // Warm Sunset Coral
+        case "kids":
+            return [Color(hex: "#4FACFE"), Color(hex: "#00F2FE")] // Playful Aqua Sky
+        case "weddings":
+            return [Color(hex: "#D4B5FF"), Color(hex: "#8950FC")] // Elegant Lavender
+        case "fashion":
+            return [Color(hex: "#FF9A8B"), Color(hex: "#FF6A88")] // Runway Rose
+        case "shoes":
+            return [Color(hex: "#38EF7D"), Color(hex: "#11998E")] // Sporty Mint
+        case "jewelry":
+            return [Color(hex: "#F6D365"), Color(hex: "#FDA085")] // Sparkling Gold
+            
+        // Pets & Animals
+        case "dogs":
+            return [Color(hex: "#F39060"), Color(hex: "#FFB03A")] // Golden Pup
+        case "cats":
+            return [Color(hex: "#8E9EAB"), Color(hex: "#EEF2F3")] // Silvery Whisker
+        case "birds":
+            return [Color(hex: "#00C6FF"), Color(hex: "#0072FF")] // Sky Feather Blue
+        case "wildlife":
+            return [Color(hex: "#134E5E"), Color(hex: "#71B280")] // Safari Emerald
+            
+        // Travel & Places
+        case "flights":
+            return [Color(hex: "#00C6FB"), Color(hex: "#005BEA")] // Aero Sky
+        case "beaches":
+            return [Color(hex: "#00F2FE"), Color(hex: "#4FACFE")] // Caribbean Aqua
+        case "mountains":
+            return [Color(hex: "#434343"), Color(hex: "#8999A6")] // High Alpine
+        case "hotels":
+            return [Color(hex: "#C79081"), Color(hex: "#DFA57D")] // Luxury Hotel Sand
+        case "landmarks":
+            return [Color(hex: "#F3A183"), Color(hex: "#ECA1FE")] // Heritage Peach-Violet
+        case "cities":
+            return [Color(hex: "#2B5876"), Color(hex: "#4E4376")] // Twilight Metropolis
+            
+        // Nature & Plants
+        case "sunsets":
+            return [Color(hex: "#FF4E50"), Color(hex: "#F9D423")] // Golden Sunset
+        case "forests":
+            return [Color(hex: "#0B8793"), Color(hex: "#360033")] // Mystic Deep Woods
+        case "flowers":
+            return [Color(hex: "#F857A6"), Color(hex: "#FF5858")] // Blossom Pink
+        case "plants":
+            return [Color(hex: "#11998E"), Color(hex: "#38EF7D")] // Botanical Leaf
+            
+        // Work & Education
+        case "books":
+            return [Color(hex: "#667EEA"), Color(hex: "#764BA2")] // Library Indigo
+        case "presentations":
+            return [Color(hex: "#1D976C"), Color(hex: "#93F9B9")] // High-Impact Green
+        case "notes":
+            return [Color(hex: "#F7971E"), Color(hex: "#FFD200")] // Post-it Amber
+        case "certificates":
+            return [Color(hex: "#F2994A"), Color(hex: "#F2C94C")] // Honor Gold
+            
+        // Vehicles & Transport
+        case "cars":
+            return [Color(hex: "#EB3349"), Color(hex: "#F45C43")] // Sports Car Red
+        case "bikes":
+            return [Color(hex: "#00B4DB"), Color(hex: "#0083B0")] // Speed Turquoise
+        case "boats":
+            return [Color(hex: "#1A2980"), Color(hex: "#26D0CE")] // Deep Sea to Aqua
+            
+        // Health & Fitness
+        case "fitness":
+            return [Color(hex: "#FF416C"), Color(hex: "#8A2387")] // Power Workout Fusion
+        case "medical":
+            return [Color(hex: "#00C6FF"), Color(hex: "#0072FF")] // Clean Medical Blue
+            
+        // Home & Shopping
+        case "interiors":
+            return [Color(hex: "#8E54E9"), Color(hex: "#4776E6")] // Modern Living
+        case "shopping":
+            return [Color(hex: "#F857A6"), Color(hex: "#FF5858")] // Hot Deal Pink
+            
+        // Default or Custom Categories
+        default:
+            return fallbackGradient(for: colorHex)
+        }
+    }
+    
+    private func fallbackGradient(for hex: String) -> [Color] {
+        switch hex.uppercased() {
+        case "#4A5FE8": return [Color(hex: "#4A5FE8"), Color(hex: "#7B5EA7")]
+        case "#0A9396": return [Color(hex: "#0A9396"), Color(hex: "#94D2BD")]
+        case "#E76F51": return [Color(hex: "#E76F51"), Color(hex: "#F4A261")]
+        case "#F4A261": return [Color(hex: "#F4A261"), Color(hex: "#E76F51")]
+        case "#2A9D8F": return [Color(hex: "#2A9D8F"), Color(hex: "#264653")]
+        case "#264653": return [Color(hex: "#264653"), Color(hex: "#2A9D8F")]
+        case "#E9C46A": return [Color(hex: "#E9C46A"), Color(hex: "#F4A261")]
+        case "#6D6875": return [Color(hex: "#6D6875"), Color(hex: "#B5838D")]
+        case "#D62828": return [Color(hex: "#D62828"), Color(hex: "#F77F00")]
+        case "#7B2FBE": return [Color(hex: "#7B2FBE"), Color(hex: "#C77DFF")]
+        case "#FF6B35": return [Color(hex: "#FF6B35"), Color(hex: "#F7C59F")]
+        case "#40916C": return [Color(hex: "#40916C"), Color(hex: "#74C69D")]
+        case "#457B9D": return [Color(hex: "#457B9D"), Color(hex: "#A8DADC")]
+        case "#C77DFF": return [Color(hex: "#C77DFF"), Color(hex: "#7B2FBE")]
+        case "#DC2626": return [Color(hex: "#DC2626"), Color(hex: "#F87171")]
+        case "#0EA5E9": return [Color(hex: "#0EA5E9"), Color(hex: "#38BDF8")]
+        case "#F59E0B": return [Color(hex: "#F59E0B"), Color(hex: "#FCD34D")]
+        case "#1B4332": return [Color(hex: "#1B4332"), Color(hex: "#40916C")]
+        case "#78350F": return [Color(hex: "#78350F"), Color(hex: "#B45309")]
+        case "#374151": return [Color(hex: "#374151"), Color(hex: "#6B7280")]
+        default:
+            return [Color(hex: hex), Color(hex: hex).opacity(0.75)]
+        }
+    }
 }
 
 // MARK: - All 56 Preset Categories

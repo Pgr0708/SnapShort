@@ -406,6 +406,30 @@ actor VisionCacheStore {
         }
     }
     
+    /// Purges all references to deleted photo IDs across all Core Data entities (hashes, OCR, tags, embeddings, notes)
+    func purgeDeletedAssets(identifiers: [String]) async {
+        guard !identifiers.isEmpty else { return }
+        let entityNames = [
+            RecordType.imageHash.rawValue,
+            RecordType.ocrText.rawValue,
+            RecordType.contentTag.rawValue,
+            RecordType.faceEmbedding.rawValue,
+            "PhotoNoteRecord"
+        ]
+        
+        await context.perform { [context] in
+            for name in entityNames {
+                let req = NSFetchRequest<NSFetchRequestResult>(entityName: name)
+                req.predicate = NSPredicate(format: "assetLocalIdentifier IN %@", identifiers)
+                let batchDel = NSBatchDeleteRequest(fetchRequest: req)
+                batchDel.resultType = .resultTypeStatusOnly
+                _ = try? context.execute(batchDel)
+            }
+            if context.hasChanges { try? context.save() }
+        }
+        logger.info("Purged \(identifiers.count) deleted assets from all Core Data tables")
+    }
+    
     // MARK: - Photo Notes (User Descriptions + AI Captions)
     
     func savePhotoNote(assetId: String, userNote: String, aiCaption: String = "") async throws {

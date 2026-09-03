@@ -22,6 +22,14 @@ final class SelectionManager: ObservableObject {
         }
     }
 
+    func select(_ id: String) {
+        selectedIdentifiers.insert(id)
+    }
+
+    func deselect(_ id: String) {
+        selectedIdentifiers.remove(id)
+    }
+
     func isSelected(_ id: String) -> Bool {
         selectedIdentifiers.contains(id)
     }

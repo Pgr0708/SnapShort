@@ -76,6 +76,11 @@ final class HomeViewModel: ObservableObject {
     @Published var backgroundIndexMessage: String = ""
     @Published var backgroundIndexProgress: Double = 0.0   // 0…1
     
+    // OCR readiness state (Text in Image is locked until OCR finishes scanning all photos)
+    @Published var isOCRComplete: Bool = true
+    @Published var isOCRIndexing: Bool = false
+    @Published var ocrIndexProgress: Double = 0.0
+    
     // MARK: - Init
     
     private let cleanUpService: CleanUpService
@@ -130,6 +135,7 @@ final class HomeViewModel: ObservableObject {
             Task { @MainActor in
                 if success {
                     self?.duplicateClusters.removeAll { $0.id == cluster.id }
+                    await self?.purgeDeletedPhotos(identifiers: toDelete)
                     if self?.duplicateClusters.isEmpty == true {
                         self?.showDuplicateResults = false
                         self?.scanError = "All duplicates deleted!"
@@ -153,12 +159,15 @@ final class HomeViewModel: ObservableObject {
     func startOCRIndexing() {
         guard !isScanning else { return }
         isScanning = true; scanError = nil
+        isOCRComplete = false; isOCRIndexing = true
         let progress = ScanProgress(); self.scanProgress = progress
         self.scanServiceName = "Indexing Text (OCR)"
         Task {
             await textRecognitionService.indexScreenshots(progress: progress)
             self.isScanning = false; self.scanProgress = nil
-            self.scanError = "Text indexing complete! You can now search text inside screenshots."
+            self.isOCRComplete = true; self.isOCRIndexing = false
+            self.ocrIndexProgress = 1.0
+            self.scanError = "Text indexing complete! \"Text in Image\" search is now ready."
         }
     }
     
@@ -186,6 +195,31 @@ final class HomeViewModel: ObservableObject {
         Task(priority: .background) { [weak self] in
             guard let self else { return }
             
+            // Check if any screenshots still need OCR indexing
+            let processedOCRIds = await self.visionStore.processedIdentifiers(for: .ocrText)
+            let fetchOptions = PHFetchOptions()
+            fetchOptions.predicate = NSPredicate(
+                format: "mediaSubtype == %ld",
+                PHAssetMediaSubtype.photoScreenshot.rawValue
+            )
+            let screenshots = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+            var unindexedCount = 0
+            screenshots.enumerateObjects { a, _, _ in
+                if !processedOCRIds.contains(a.localIdentifier) {
+                    unindexedCount += 1
+                }
+            }
+            
+            await MainActor.run {
+                if unindexedCount > 0 {
+                    self.isOCRComplete = false
+                    self.isOCRIndexing = true
+                } else {
+                    self.isOCRComplete = true
+                    self.isOCRIndexing = false
+                }
+            }
+            
             // ── Phase 1: OCR ────────────────────────────────────────────────
             let ocrProgress = ScanProgress()
             
@@ -199,13 +233,22 @@ final class HomeViewModel: ObservableObject {
                         if !self.isBackgroundIndexing {
                             self.isBackgroundIndexing = true
                         }
-                        self.backgroundIndexMessage = "Reading text in \(ocrProgress.totalCount) photos…"
+                        self.isOCRComplete = false
+                        self.isOCRIndexing = true
+                        self.ocrIndexProgress = frac
+                        self.backgroundIndexMessage = "Scanning text in \(ocrProgress.totalCount) photos…"
                         self.backgroundIndexProgress = frac * 0.5
                     }
                 }
             }
             await textRecognitionService.indexScreenshots(progress: ocrProgress)
             ocrPoller.cancel()
+            
+            await MainActor.run {
+                self.isOCRComplete = true
+                self.isOCRIndexing = false
+                self.ocrIndexProgress = 1.0
+            }
             
             // ── Phase 2: Vision tagging ──────────────────────────────────────
             let tagProgress = ScanProgress()
@@ -321,7 +364,7 @@ final class HomeViewModel: ObservableObject {
         }
     }
     
-    /// Deletes a photo from the Photos library (Apple shows native confirmation popup).
+    /// Deletes a photo from the Photos library (Apple shows native confirmation popup) and purges from Core Data.
     func deletePhoto(identifier: String) {
         let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)
         guard fetchResult.count > 0 else { return }
@@ -331,11 +374,23 @@ final class HomeViewModel: ObservableObject {
             PHAssetChangeRequest.deleteAssets(assets as NSFastEnumeration)
         } completionHandler: { [weak self] success, error in
             Task { @MainActor in
-                if !success, let error {
+                if success {
+                    await self?.purgeDeletedPhotos(identifiers: [identifier])
+                } else if let error {
                     self?.scanError = "Delete failed: \(error.localizedDescription)"
                 }
             }
         }
+    }
+    
+    /// Cleans Core Data cache and invalidates categories whenever photos are deleted from any tab.
+    func purgeDeletedPhotos(identifiers: [String]) async {
+        guard !identifiers.isEmpty else { return }
+        await visionStore.purgeDeletedAssets(identifiers: identifiers)
+        await categorizationService.invalidateCache()
+        await loadCategories()
+        let idSet = Set(identifiers)
+        searchResults.removeAll { idSet.contains($0.assetLocalIdentifier) }
     }
     
     // MARK: - Photo Notes
@@ -354,6 +409,12 @@ final class HomeViewModel: ObservableObject {
     func performSearch() {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { activeSearch = false; searchResults = []; return }
+        
+        if searchMode == .textInImage && !isOCRComplete {
+            scanError = "Text in photos is still being scanned. \"Text in Image\" search will unlock automatically once complete."
+            return
+        }
+        
         activeSearch = true; isSearching = true
         Task {
             switch searchMode {

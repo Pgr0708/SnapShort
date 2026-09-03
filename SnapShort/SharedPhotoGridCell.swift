@@ -6,10 +6,19 @@
 import SwiftUI
 import Photos
 
+// MARK: - PreferenceKey for reporting cell frames for drag-to-select
+
+struct PhotoCellFrameKey: PreferenceKey {
+    static var defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue()) { $1 }
+    }
+}
+
 /// Reusable 1:1 square photo thumbnail used in both ContentView and CategoryDetailView.
 /// - Constrained strictly with GeometryReader + aspectRatio(1) so it arranges in neat columns.
 /// - Shows a "⋯" action button in the top-right corner.
-/// - In selection mode shows a circular checkmark and responds to tap/drag.
+/// - In selection mode: tap anywhere to select/deselect; supports drag-to-select across multiple cells.
 struct SharedPhotoGridCell: View {
     let asset: PHAsset
     @ObservedObject var selectionManager: SelectionManager
@@ -41,42 +50,34 @@ struct SharedPhotoGridCell: View {
                             .frame(width: geo.size.width, height: geo.size.height)
                     }
                 }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    if selectionManager.isSelecting {
-                        withAnimation(.spring(response: 0.2)) {
-                            selectionManager.toggle(asset.localIdentifier)
-                        }
-                    } else {
-                        onView()
-                    }
+                
+                // Selection dim overlay (allowsHitTesting false so taps pass directly through!)
+                if selectionManager.isSelecting && !isSelected {
+                    Color.black.opacity(0.28)
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .allowsHitTesting(false)
                 }
-                .overlay(
-                    // Selection dim overlay
-                    selectionManager.isSelecting && !isSelected
-                        ? Color.black.opacity(0.3)
-                        : Color.clear
-                )
                 
                 // Selection mode: circular checkmark in top-left
                 if selectionManager.isSelecting {
                     ZStack {
                         Circle()
                             .fill(isSelected ? Color(hex: "#4A5FE8") : Color.white.opacity(0.85))
-                            .frame(width: 22, height: 22)
+                            .frame(width: 24, height: 24)
                         if isSelected {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 11, weight: .bold))
+                                .font(.system(size: 12, weight: .bold))
                                 .foregroundStyle(.white)
                         } else {
                             Circle()
-                                .stroke(Color.white.opacity(0.7), lineWidth: 1.5)
-                                .frame(width: 22, height: 22)
+                                .stroke(Color.white.opacity(0.85), lineWidth: 2)
+                                .frame(width: 24, height: 24)
                         }
                     }
-                    .padding(5)
+                    .padding(6)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .shadow(radius: 2)
+                    .allowsHitTesting(false)
                     .transition(.scale.combined(with: .opacity))
                 }
                 
@@ -103,6 +104,27 @@ struct SharedPhotoGridCell: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .clipped()
+            .contentShape(Rectangle())
+            // Tap to select or view
+            .onTapGesture {
+                if selectionManager.isSelecting {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    withAnimation(.spring(response: 0.2)) {
+                        selectionManager.toggle(asset.localIdentifier)
+                    }
+                } else {
+                    onView()
+                }
+            }
+            // Report cell frame for drag-to-select hit testing
+            .background(
+                GeometryReader { cellGeo in
+                    Color.clear.preference(
+                        key: PhotoCellFrameKey.self,
+                        value: [asset.localIdentifier: cellGeo.frame(in: .global)]
+                    )
+                }
+            )
         }
         .aspectRatio(1, contentMode: .fit)
         .animation(.spring(response: 0.2), value: isSelected)

@@ -243,6 +243,9 @@ struct CleanUpCategoryView: View {
                         self.assets.removeAll { deleted.contains($0.localIdentifier) }
                         self.selectedIds.removeAll()
                     }
+                    Task {
+                        await self.viewModel.purgeDeletedPhotos(identifiers: Array(deleted))
+                    }
                 }
             }
         }

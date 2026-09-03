@@ -48,7 +48,6 @@ struct RootView: View {
             
         case .home:
             ContentView(viewModel: homeViewModel)
-                .indexingBannerOverlay(viewModel: homeViewModel)
                 .task {
                     // Auto-index in background when app opens.
                     // BatchVisionProcessor skips already-cached photos (delta only).

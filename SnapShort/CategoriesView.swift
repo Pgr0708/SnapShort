@@ -254,22 +254,43 @@ private struct GroupChip: View {
 
 private struct CategoryCard: View {
     let category: SmartCategory
+    
+    private var isAlbumSavedInPhotos: Bool {
+        let albumTitle = "\(category.emoji) \(category.name)"
+        let options = PHFetchOptions()
+        options.predicate = NSPredicate(format: "title == %@", albumTitle)
+        let collections = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .albumRegular, options: options)
+        return collections.count > 0
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topTrailing) {
                 RoundedRectangle(cornerRadius: 16)
                     .fill(LinearGradient(
-                        colors: [Color(hex: category.colorHex).opacity(0.85), Color(hex: category.colorHex)],
+                        colors: category.gradientColors,
                         startPoint: .topLeading, endPoint: .bottomTrailing
                     ))
-                    .frame(height: 80)
+                    .frame(height: 84)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.white.opacity(0.28), Color.white.opacity(0.0)],
+                                    startPoint: .top,
+                                    endPoint: .center
+                                )
+                            )
+                    )
+                    .shadow(color: category.gradientColors.first?.opacity(0.32) ?? Color.black.opacity(0.08), radius: 6, y: 3)
 
                 Text(category.emoji)
-                    .font(.system(size: 36))
+                    .font(.system(size: 38))
+                    .shadow(color: Color.black.opacity(0.18), radius: 3, y: 2)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding()
 
+                // Photo count pill (top trailing)
                 if category.photoCount > 0 {
                     Text("\(category.photoCount)")
                         .font(.system(size: 10, weight: .bold))
@@ -281,7 +302,22 @@ private struct CategoryCard: View {
                         .padding(8)
                 }
 
-                if category.isCustom {
+                // In Photos Saved badge (top leading)
+                if isAlbumSavedInPhotos {
+                    HStack(spacing: 3) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 8, weight: .bold))
+                        Text("In Photos")
+                            .font(.system(size: 8, weight: .bold))
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Color(hex: "#10B981").opacity(0.9))
+                    .clipShape(Capsule())
+                    .padding(8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                } else if category.isCustom {
                     Image(systemName: "star.fill")
                         .font(.system(size: 8))
                         .foregroundStyle(.white)
@@ -294,10 +330,19 @@ private struct CategoryCard: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(category.name)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#1C1C1E"))
-                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    Text(category.name)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color(hex: "#1C1C1E"))
+                        .lineLimit(1)
+                    
+                    if isAlbumSavedInPhotos {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Color(hex: "#10B981"))
+                    }
+                }
+                
                 Text(category.photoCount == 0 ? "No photos yet" : "\(category.photoCount) photo\(category.photoCount == 1 ? "" : "s")")
                     .font(.system(size: 11))
                     .foregroundStyle(Color(hex: "#9CA3AF"))
