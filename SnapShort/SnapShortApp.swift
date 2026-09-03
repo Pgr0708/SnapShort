@@ -15,6 +15,7 @@ class AppDependencies {
     let textRecognitionService: TextRecognitionService
     let contentSearchService: ContentSearchService
     let unifiedSearchService: UnifiedSearchService
+    let categorizationService: SmartCategorizationService
     let homeViewModel: HomeViewModel
     
     init() {
@@ -23,12 +24,15 @@ class AppDependencies {
         self.duplicateService = DuplicateDetectionService(visionStore: visionStore, batchProcessor: batchProcessor)
         self.textRecognitionService = TextRecognitionService(visionStore: visionStore, batchProcessor: batchProcessor)
         self.contentSearchService = ContentSearchService(visionStore: visionStore, batchProcessor: batchProcessor)
-        self.unifiedSearchService = UnifiedSearchService(textRecognitionService: textRecognitionService)
+        self.unifiedSearchService = UnifiedSearchService(textRecognitionService: textRecognitionService, visionStore: visionStore)
+        self.categorizationService = SmartCategorizationService(visionStore: visionStore)
         self.homeViewModel = HomeViewModel(
+            visionStore: visionStore,
             duplicateService: duplicateService,
             textRecognitionService: textRecognitionService,
             contentSearchService: contentSearchService,
-            unifiedSearchService: unifiedSearchService
+            unifiedSearchService: unifiedSearchService,
+            categorizationService: categorizationService
         )
     }
 }
@@ -41,7 +45,7 @@ struct SnapShortApp: App {
     
     var body: some Scene {
         WindowGroup {
-            RootView(homeViewModel: dependencies.homeViewModel)
+            MainTabView(homeViewModel: dependencies.homeViewModel)
                 .environmentObject(settings)
                 .environment(\.locale, Locale(identifier: settings.languageCode))
                 .environment(\.managedObjectContext, CoreDataManager.shared.context)

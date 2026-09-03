@@ -348,6 +348,42 @@ actor VisionCacheStore {
         }
     }
     
+    /// Bulk fetch all OCR text records for SmartCategorizationService
+    func fetchAllOCRRecords() async -> [(identifier: String, text: String)] {
+        return await context.perform { [context] in
+            let fetchRequest = NSFetchRequest<NSManagedObject>(entityName: RecordType.ocrText.rawValue)
+            do {
+                let results = try context.fetch(fetchRequest)
+                return results.compactMap { r in
+                    guard let id = r.value(forKey: "assetLocalIdentifier") as? String,
+                          let text = r.value(forKey: "extractedText") as? String else { return nil }
+                    return (identifier: id, text: text)
+                }
+            } catch {
+                self.logger.error("Failed to fetch all OCR records: \(error.localizedDescription)")
+                return []
+            }
+        }
+    }
+    
+    /// Bulk fetch all content tag records for SmartCategorizationService
+    func fetchAllContentTagRecords() async -> [(identifier: String, tags: String)] {
+        return await context.perform { [context] in
+            let fetchRequest = NSFetchRequest<NSManagedObject>(entityName: RecordType.contentTag.rawValue)
+            do {
+                let results = try context.fetch(fetchRequest)
+                return results.compactMap { r in
+                    guard let id = r.value(forKey: "assetLocalIdentifier") as? String,
+                          let tags = r.value(forKey: "tags") as? String else { return nil }
+                    return (identifier: id, tags: tags)
+                }
+            } catch {
+                self.logger.error("Failed to fetch all content tags: \(error.localizedDescription)")
+                return []
+            }
+        }
+    }
+    
     func deleteImageHashRecords(identifiers: [String]) async throws {
         guard !identifiers.isEmpty else { return }
         try await context.perform { [context] in
@@ -368,5 +404,135 @@ actor VisionCacheStore {
             batchDelete.resultType = .resultTypeStatusOnly
             try context.execute(batchDelete)
         }
+    }
+    
+    // MARK: - Photo Notes (User Descriptions + AI Captions)
+    
+    func savePhotoNote(assetId: String, userNote: String, aiCaption: String = "") async throws {
+        try await context.perform { [context] in
+            let fetchRequest = NSFetchRequest<NSManagedObject>(entityName: "PhotoNoteRecord")
+            fetchRequest.predicate = NSPredicate(format: "assetLocalIdentifier == %@", assetId)
+            fetchRequest.fetchLimit = 1
+            
+            let entity: NSManagedObject
+            if let existing = try context.fetch(fetchRequest).first {
+                entity = existing
+            } else {
+                entity = NSEntityDescription.insertNewObject(forEntityName: "PhotoNoteRecord", into: context)
+            }
+            
+            entity.setValue(assetId, forKey: "assetLocalIdentifier")
+            entity.setValue(userNote, forKey: "userNote")
+            entity.setValue(aiCaption, forKey: "aiCaption")
+            entity.setValue(Date(), forKey: "updatedAt")
+            
+            if context.hasChanges { try context.save() }
+        }
+        logger.info("Saved note for asset \(assetId)")
+    }
+    
+    func fetchPhotoNote(for assetId: String) async -> (userNote: String, aiCaption: String) {
+        return await context.perform { [context] in
+            let fetchRequest = NSFetchRequest<NSManagedObject>(entityName: "PhotoNoteRecord")
+            fetchRequest.predicate = NSPredicate(format: "assetLocalIdentifier == %@", assetId)
+            fetchRequest.fetchLimit = 1
+            
+            guard let record = try? context.fetch(fetchRequest).first else {
+                return (userNote: "", aiCaption: "")
+            }
+            let note = record.value(forKey: "userNote") as? String ?? ""
+            let caption = record.value(forKey: "aiCaption") as? String ?? ""
+            return (userNote: note, aiCaption: caption)
+        }
+    }
+    
+    func searchPhotoNotes(query: String) async -> [(identifier: String, matchedNote: String)] {
+        let normalized = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else { return [] }
+        
+        return await context.perform { [context] in
+            let fetchRequest = NSFetchRequest<NSManagedObject>(entityName: "PhotoNoteRecord")
+            fetchRequest.predicate = NSPredicate(
+                format: "userNote CONTAINS[cd] %@ OR aiCaption CONTAINS[cd] %@",
+                normalized, normalized
+            )
+            do {
+                let results = try context.fetch(fetchRequest)
+                return results.compactMap { r in
+                    guard let id = r.value(forKey: "assetLocalIdentifier") as? String else { return nil }
+                    let note = r.value(forKey: "userNote") as? String ?? ""
+                    let caption = r.value(forKey: "aiCaption") as? String ?? ""
+                    let matched = note.isEmpty ? caption : note
+                    return (identifier: id, matchedNote: matched)
+                }
+            } catch {
+                self.logger.error("Failed to search photo notes: \(error.localizedDescription)")
+                return []
+            }
+        }
+    }
+    
+    // MARK: - User Categories (Custom Categories)
+    
+    func saveUserCategory(
+        id: String, name: String, iconName: String,
+        colorHex: String, keywords: String
+    ) async throws {
+        try await context.perform { [context] in
+            let fetchRequest = NSFetchRequest<NSManagedObject>(entityName: "UserCategoryRecord")
+            fetchRequest.predicate = NSPredicate(format: "categoryId == %@", id)
+            fetchRequest.fetchLimit = 1
+            
+            let entity: NSManagedObject
+            if let existing = try context.fetch(fetchRequest).first {
+                entity = existing
+            } else {
+                entity = NSEntityDescription.insertNewObject(forEntityName: "UserCategoryRecord", into: context)
+                entity.setValue(Date(), forKey: "createdAt")
+            }
+            
+            entity.setValue(id, forKey: "categoryId")
+            entity.setValue(name, forKey: "name")
+            entity.setValue(iconName, forKey: "iconName")
+            entity.setValue(colorHex, forKey: "colorHex")
+            entity.setValue(keywords, forKey: "keywords")
+            
+            if context.hasChanges { try context.save() }
+        }
+        logger.info("Saved user category: \(name)")
+    }
+    
+    func fetchAllUserCategories() async -> [(id: String, name: String, iconName: String, colorHex: String, keywords: String)] {
+        return await context.perform { [context] in
+            let fetchRequest = NSFetchRequest<NSManagedObject>(entityName: "UserCategoryRecord")
+            let sortDescriptor = NSSortDescriptor(key: "createdAt", ascending: true)
+            fetchRequest.sortDescriptors = [sortDescriptor]
+            
+            do {
+                let results = try context.fetch(fetchRequest)
+                return results.compactMap { r in
+                    guard let id = r.value(forKey: "categoryId") as? String,
+                          let name = r.value(forKey: "name") as? String else { return nil }
+                    let icon = r.value(forKey: "iconName") as? String ?? "folder.fill"
+                    let color = r.value(forKey: "colorHex") as? String ?? "#4A5FE8"
+                    let keywords = r.value(forKey: "keywords") as? String ?? ""
+                    return (id: id, name: name, iconName: icon, colorHex: color, keywords: keywords)
+                }
+            } catch {
+                self.logger.error("Failed to fetch user categories: \(error.localizedDescription)")
+                return []
+            }
+        }
+    }
+    
+    func deleteUserCategory(id: String) async throws {
+        try await context.perform { [context] in
+            let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "UserCategoryRecord")
+            fetchRequest.predicate = NSPredicate(format: "categoryId == %@", id)
+            let batchDelete = NSBatchDeleteRequest(fetchRequest: fetchRequest)
+            batchDelete.resultType = .resultTypeStatusOnly
+            try context.execute(batchDelete)
+        }
+        logger.info("Deleted user category: \(id)")
     }
 }

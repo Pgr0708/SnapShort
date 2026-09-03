@@ -12,6 +12,7 @@ struct ContentView: View {
     @StateObject private var viewModel: HomeViewModel
     @StateObject private var photoLibrary = PhotoLibraryManager()
     @StateObject private var speech = SpeechRecognizer()
+    @StateObject private var selectionManager = SelectionManager()
     
     @State private var selectedPickerItem: PhotosPickerItem?
     @State private var pickedImage: UIImage?
@@ -19,6 +20,8 @@ struct ContentView: View {
     @State private var customFileName: String = ""
     @State private var showSettings = false
     @State private var selectedAsset: PHAsset?
+    @State private var noteAsset: PHAsset?
+    @State private var showDeleteSelectedConfirm: Bool = false
     
     private let spacing: CGFloat = 5
     
@@ -407,10 +410,27 @@ struct ContentView: View {
             .sheet(isPresented: $viewModel.showDuplicateResults) {
                 DuplicateResultsView(viewModel: viewModel)
             }
-            // MARK: Photo Detail Sheet
-            .sheet(item: $selectedAsset) { asset in
-                PhotoDetailView(asset: asset)
-                    .ignoresSafeArea()
+            // MARK: Photo Detail (full-screen, like Photos.app)
+            .fullScreenCover(item: $selectedAsset) { asset in
+                PhotoDetailView(asset: asset, visionStore: viewModel.visionStore)
+            }
+            // MARK: Note Editor
+            .sheet(item: $noteAsset) { asset in
+                NoteEditorSheet(assetId: asset.localIdentifier, visionStore: viewModel.visionStore, initialNote: "") { _ in
+                    noteAsset = nil
+                }
+            }
+            // MARK: Delete selected confirmation
+            .alert("Delete \(selectionManager.selectedCount) photo\(selectionManager.selectedCount == 1 ? "" : "s")?",
+                   isPresented: $showDeleteSelectedConfirm) {
+                Button("Delete", role: .destructive) {
+                    let ids = selectionManager.selectedIdentifiers
+                    selectionManager.exitSelection()
+                    for id in ids { viewModel.deletePhoto(identifier: id) }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("These photos will be permanently deleted from your library.")
             }
             // MARK: Settings Sheet
             .sheet(isPresented: $showSettings) {
@@ -433,30 +453,83 @@ struct ContentView: View {
     // MARK: - Photo Grid
     
     private var photoGridView: some View {
-        ScrollView(.vertical) {
-            if let assets = photoLibrary.assets {
-                LazyVGrid(columns: columns, spacing: spacing) {
-                    ForEach(0..<assets.count, id: \.self) { index in
-                        let asset = assets.object(at: index)
-                        PhotoThumbnailView(asset: asset)
-                            .onTapGesture {
-                                selectedAsset = asset
+        ZStack(alignment: .bottom) {
+            ScrollView(.vertical) {
+                if let assets = photoLibrary.assets {
+                    // Select button row
+                    HStack {
+                        Spacer()
+                        Button(selectionManager.isSelecting ? "Done" : "Select") {
+                            withAnimation(.spring()) {
+                                if selectionManager.isSelecting { selectionManager.exitSelection() }
+                                else { selectionManager.isSelecting = true }
                             }
+                        }
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color(hex: "#4A5FE8"))
+                        .padding(.trailing, 16)
+                        .padding(.vertical, 6)
                     }
+                    
+                    LazyVGrid(columns: columns, spacing: spacing) {
+                        ForEach(0..<assets.count, id: \.self) { index in
+                            let asset = assets.object(at: index)
+                            SharedPhotoGridCell(
+                                asset: asset,
+                                selectionManager: selectionManager,
+                                onView: { selectedAsset = asset },
+                                onDelete: { viewModel.deletePhoto(identifier: asset.localIdentifier) },
+                                onEditNote: { noteAsset = asset }
+                            )
+                        }
+                    }
+                    .padding(.horizontal, spacing)
+                    .padding(.bottom, selectionManager.isSelecting ? 90 : 16)
+                } else {
+                    VStack(spacing: 16) {
+                        ProgressView().scaleEffect(1.5)
+                        Text("Loading photos...")
+                            .font(.subheadline)
+                            .foregroundStyle(Color(hex: "#757686"))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 80)
                 }
-                .padding(.horizontal, spacing)
-            } else {
-                VStack(spacing: 16) {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                    Text("Loading photos...")
-                        .font(.subheadline)
-                        .foregroundStyle(Color(hex: "#757686"))
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 80)
+            }
+            
+            // Multi-select bottom bar
+            if selectionManager.isSelecting {
+                MultiSelectBar(
+                    selectionManager: selectionManager,
+                    onDeleteSelected: { showDeleteSelectedConfirm = true },
+                    onSelectAll: {
+                        if let assets = photoLibrary.assets {
+                            var ids: [String] = []
+                            assets.enumerateObjects { a, _, _ in ids.append(a.localIdentifier) }
+                            selectionManager.selectAll(ids)
+                        }
+                    },
+                    onSaveAlbum: {
+                        Task {
+                            let ids = Array(selectionManager.selectedIdentifiers)
+                            guard !ids.isEmpty else { return }
+                            let title = "SnapShort Selection"
+                            let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: nil)
+                            try? await PHPhotoLibrary.shared().performChanges {
+                                let req = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: title)
+                                let ph = req.placeholderForCreatedAssetCollection
+                                let col = PHAssetCollection.fetchAssetCollections(withLocalIdentifiers: [ph.localIdentifier], options: nil)
+                                if let album = col.firstObject, let r = PHAssetCollectionChangeRequest(for: album) { r.addAssets(fetchResult) }
+                            }
+                            selectionManager.exitSelection()
+                            viewModel.scanError = "✅ Album saved to Photos!"
+                        }
+                    }
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .animation(.spring(), value: selectionManager.isSelecting)
     }
     
     // MARK: - Search Results
@@ -512,14 +585,19 @@ struct ContentView: View {
                 
                 List(viewModel.searchResults) { result in
                     SearchResultRow(result: result) {
-                        // Tap row → open photo detail
                         let fetch = PHAsset.fetchAssets(
                             withLocalIdentifiers: [result.assetLocalIdentifier],
                             options: nil
                         )
-                        if let asset = fetch.firstObject {
-                            selectedAsset = asset
-                        }
+                        if let asset = fetch.firstObject { selectedAsset = asset }
+                    } onDelete: {
+                        viewModel.deletePhoto(identifier: result.assetLocalIdentifier)
+                    } onEditNote: {
+                        let fetch = PHAsset.fetchAssets(
+                            withLocalIdentifiers: [result.assetLocalIdentifier],
+                            options: nil
+                        )
+                        if let asset = fetch.firstObject { noteAsset = asset }
                     }
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
@@ -648,7 +726,10 @@ struct SensitivityPickerSheet: View {
 struct SearchResultRow: View {
     let result: SearchResultItem
     var onTap: (() -> Void)?
+    var onDelete: (() -> Void)?
+    var onEditNote: (() -> Void)?
     @State private var thumbnail: UIImage?
+    @State private var showActions: Bool = false
     
     var body: some View {
         HStack(spacing: 12) {
@@ -683,9 +764,23 @@ struct SearchResultRow: View {
             
             Spacer()
             
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(Color(hex: "#C4C6D6"))
+            // ⋯ action button
+            Button {
+                showActions = true
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color(hex: "#9CA3AF"))
+                    .frame(width: 32, height: 32)
+                    .background(Color(hex: "#F3F4F6"))
+                    .clipShape(Circle())
+            }
+            .confirmationDialog("", isPresented: $showActions, titleVisibility: .hidden) {
+                Button("View Photo") { onTap?() }
+                Button("Edit Note") { onEditNote?() }
+                Button("Delete Photo", role: .destructive) { onDelete?() }
+                Button("Cancel", role: .cancel) {}
+            }
         }
         .padding(.vertical, 6)
         .contentShape(Rectangle())

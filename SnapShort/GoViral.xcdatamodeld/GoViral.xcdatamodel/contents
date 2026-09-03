@@ -49,4 +49,28 @@
             </uniquenessConstraint>
         </uniquenessConstraints>
     </entity>
+    <entity name="PhotoNoteRecord" representedClassName="PhotoNoteRecord" syncable="YES" codeGenerationType="class">
+        <attribute name="aiCaption" attributeType="String" defaultValueString="" optional="YES"/>
+        <attribute name="assetLocalIdentifier" attributeType="String" defaultValueString="" indexed="YES" optional="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" optional="YES"/>
+        <attribute name="userNote" attributeType="String" defaultValueString="" optional="YES"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="assetLocalIdentifier"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    <entity name="UserCategoryRecord" representedClassName="UserCategoryRecord" syncable="YES" codeGenerationType="class">
+        <attribute name="categoryId" attributeType="String" defaultValueString="" indexed="YES" optional="YES"/>
+        <attribute name="colorHex" attributeType="String" defaultValueString="#4A5FE8" optional="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO" optional="YES"/>
+        <attribute name="iconName" attributeType="String" defaultValueString="folder.fill" optional="YES"/>
+        <attribute name="keywords" attributeType="String" defaultValueString="" optional="YES"/>
+        <attribute name="name" attributeType="String" defaultValueString="" optional="YES"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="categoryId"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
 </model>

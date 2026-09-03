@@ -10,6 +10,7 @@ import Foundation
 enum SearchResultSource {
     case ocr
     case contentTag
+    case photoNote
 }
 
 struct SearchResultItem: Identifiable {
@@ -36,9 +37,11 @@ protocol UnifiedSearchServicing {
 
 actor UnifiedSearchService: UnifiedSearchServicing {
     private let textRecognitionService: TextRecognitionServicing
+    private let visionStore: VisionCacheStore
     
-    init(textRecognitionService: TextRecognitionServicing) {
+    init(textRecognitionService: TextRecognitionServicing, visionStore: VisionCacheStore) {
         self.textRecognitionService = textRecognitionService
+        self.visionStore = visionStore
     }
     
     func search(query: String) async -> UnifiedSearchResults {
@@ -47,26 +50,32 @@ actor UnifiedSearchService: UnifiedSearchServicing {
             return UnifiedSearchResults(ocrMatches: [], combinedAndDeduplicated: [])
         }
         
-        let ocrResults = await textRecognitionService.search(query: normalized)
+        // Run OCR search + Notes search in parallel
+        async let ocrResults = textRecognitionService.search(query: normalized)
+        async let noteResults = visionStore.searchPhotoNotes(query: normalized)
         
-        let combined = deduplicateAndRank(ocrResults: ocrResults)
+        let (ocr, notes) = await (ocrResults, noteResults)
+        
+        let combined = deduplicateAndRank(ocrResults: ocr, noteResults: notes)
         
         return UnifiedSearchResults(
-            ocrMatches: ocrResults,
+            ocrMatches: ocr,
             combinedAndDeduplicated: combined
         )
     }
     
     // MARK: - Private
     
-    private func deduplicateAndRank(ocrResults: [OCRSearchResult]) -> [SearchResultItem] {
+    private func deduplicateAndRank(
+        ocrResults: [OCRSearchResult],
+        noteResults: [(identifier: String, matchedNote: String)]
+    ) -> [SearchResultItem] {
         var itemsById: [String: SearchResultItem] = [:]
         
+        // Add OCR results
         for ocr in ocrResults {
             let relevance = Double(ocr.confidence)
-            
             if let existing = itemsById[ocr.assetLocalIdentifier] {
-                // Merge: boost relevance if found in multiple sources (future-proof)
                 let merged = SearchResultItem(
                     assetLocalIdentifier: existing.assetLocalIdentifier,
                     title: existing.title,
@@ -76,14 +85,36 @@ actor UnifiedSearchService: UnifiedSearchServicing {
                 )
                 itemsById[ocr.assetLocalIdentifier] = merged
             } else {
-                let item = SearchResultItem(
+                itemsById[ocr.assetLocalIdentifier] = SearchResultItem(
                     assetLocalIdentifier: ocr.assetLocalIdentifier,
                     title: ocr.snippet,
                     subtitle: ocr.extractedText,
                     relevanceScore: relevance,
                     source: .ocr
                 )
-                itemsById[ocr.assetLocalIdentifier] = item
+            }
+        }
+        
+        // Add note results — give a high fixed relevance since user wrote the note intentionally
+        for note in noteResults {
+            if let existing = itemsById[note.identifier] {
+                // Boost existing item's score
+                let boosted = SearchResultItem(
+                    assetLocalIdentifier: existing.assetLocalIdentifier,
+                    title: existing.title,
+                    subtitle: "📝 " + note.matchedNote,
+                    relevanceScore: min(existing.relevanceScore + 0.3, 1.0),
+                    source: .photoNote
+                )
+                itemsById[note.identifier] = boosted
+            } else {
+                itemsById[note.identifier] = SearchResultItem(
+                    assetLocalIdentifier: note.identifier,
+                    title: note.matchedNote,
+                    subtitle: "📝 From your notes",
+                    relevanceScore: 0.85,   // high relevance — user explicitly wrote this
+                    source: .photoNote
+                )
             }
         }
         
