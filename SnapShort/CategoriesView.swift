@@ -11,8 +11,9 @@ struct CategoriesView: View {
 
     @State private var searchText: String = ""
     @State private var selectedGroup: CategoryGroup = .all
+    @State private var showOnlyWithPhotos: Bool = false
     @State private var showAddCategory: Bool = false
-    @State private var isIndexing: Bool = false
+    @State private var isCategorizing: Bool = false
     
     // Edit / Delete state
     @State private var categoryToEdit: SmartCategory?
@@ -21,19 +22,24 @@ struct CategoriesView: View {
 
     private var filteredCategories: [SmartCategory] {
         let base = viewModel.allCategories
-        let groupFiltered = selectedGroup == .all ? base : base.filter { $0.group == selectedGroup }
-        if searchText.isEmpty { return groupFiltered }
-        let q = searchText.lowercased()
-        return groupFiltered.filter {
-            $0.name.lowercased().contains(q) ||
-            $0.group.rawValue.lowercased().contains(q) ||
-            $0.ocrKeywords.contains { $0.contains(q) } ||
-            $0.visionTags.contains { $0.contains(q) }
+        var result = selectedGroup == .all ? base : base.filter { $0.group == selectedGroup }
+        if showOnlyWithPhotos {
+            result = result.filter { $0.photoCount > 0 }
         }
+        if !searchText.isEmpty {
+            let q = searchText.lowercased()
+            result = result.filter {
+                $0.name.lowercased().contains(q) ||
+                $0.group.rawValue.lowercased().contains(q) ||
+                $0.ocrKeywords.contains { $0.contains(q) } ||
+                $0.visionTags.contains { $0.contains(q) }
+            }
+        }
+        return result
     }
 
     private var groups: [CategoryGroup] {
-        [.all, .documents, .screenshots, .food, .people, .animals, .travel, .nature, .work, .vehicles, .fitness, .home, .custom]
+        [.all, .documents, .screenshots, .lifestyle, .people, .custom]
     }
 
     var body: some View {
@@ -61,9 +67,53 @@ struct CategoriesView: View {
                     .padding(.vertical, 10)
                     .background(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .shadow(color: .black.opacity(0.05), radius: 8, y: 2)
+                    .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
                     .padding(.horizontal, 20)
-                    .padding(.top, 12)
+                    .padding(.top, 10)
+
+                    // Overview Banner & "With Photos" Toggle
+                    let totalCategorized = viewModel.allCategories.reduce(0) { $0 + $1.photoCount }
+                    let activeCount = viewModel.allCategories.filter { $0.photoCount > 0 }.count
+                    
+                    HStack(spacing: 8) {
+                        HStack(spacing: 6) {
+                            if isCategorizing {
+                                ProgressView().scaleEffect(0.7).tint(Color(hex: "#4A5FE8"))
+                            } else {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundStyle(Color(hex: "#4A5FE8"))
+                            }
+                            Text(totalCategorized > 0
+                                 ? "\(totalCategorized) photo\(totalCategorized == 1 ? "" : "s") sorted across \(activeCount) categories"
+                                 : "Auto-categorizing photos…")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(Color(hex: "#4B5563"))
+                        }
+                        
+                        Spacer()
+                        
+                        Button {
+                            withAnimation(.spring(response: 0.25)) {
+                                showOnlyWithPhotos.toggle()
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: showOnlyWithPhotos ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 11))
+                                Text("With Photos")
+                                    .font(.system(size: 11, weight: .semibold))
+                            }
+                            .foregroundStyle(showOnlyWithPhotos ? Color(hex: "#4A5FE8") : Color(hex: "#6B7280"))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(showOnlyWithPhotos ? Color(hex: "#4A5FE8").opacity(0.12) : Color.white)
+                            .clipShape(Capsule())
+                            .shadow(color: .black.opacity(0.03), radius: 3, y: 1)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 10)
 
                     // Group filter carousel
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -75,38 +125,7 @@ struct CategoriesView: View {
                             }
                         }
                         .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                    }
-
-                    // Categorize button (only if no counts yet)
-                    if viewModel.allCategories.allSatisfy({ $0.photoCount == 0 }) {
-                        Button {
-                            Task {
-                                isIndexing = true
-                                await viewModel.buildCategoryIndex()
-                                isIndexing = false
-                            }
-                        } label: {
-                            HStack(spacing: 8) {
-                                if isIndexing {
-                                    ProgressView().scaleEffect(0.8).tint(.white)
-                                } else {
-                                    Image(systemName: "sparkles")
-                                }
-                                Text(isIndexing ? "Categorizing…" : "Categorize My Photos")
-                                    .font(.system(size: 14, weight: .semibold))
-                            }
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(
-                                LinearGradient(colors: [Color(hex: "#4A5FE8"), Color(hex: "#7B5EA7")],
-                                               startPoint: .leading, endPoint: .trailing)
-                            )
-                            .clipShape(Capsule())
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 8)
+                        .padding(.vertical, 10)
                     }
 
                     // Category grid
@@ -116,9 +135,17 @@ struct CategoriesView: View {
                                 Image(systemName: "square.grid.2x2")
                                     .font(.system(size: 44))
                                     .foregroundStyle(Color(hex: "#D1D5DB"))
-                                Text(searchText.isEmpty ? "No categories yet" : "No results for \"\(searchText)\"")
+                                Text(showOnlyWithPhotos ? "No categories with photos yet" : (searchText.isEmpty ? "No categories" : "No results for \"\(searchText)\""))
                                     .font(.system(size: 16, weight: .medium))
                                     .foregroundStyle(Color(hex: "#9CA3AF"))
+                                if showOnlyWithPhotos {
+                                    Button("Show All Categories") {
+                                        withAnimation { showOnlyWithPhotos = false }
+                                    }
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(Color(hex: "#4A5FE8"))
+                                    .padding(.top, 4)
+                                }
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.top, 60)
@@ -164,6 +191,12 @@ struct CategoriesView: View {
                             .padding(.bottom, 24)
                         }
                     }
+                    .refreshable {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        isCategorizing = true
+                        await viewModel.buildCategoryIndex()
+                        isCategorizing = false
+                    }
                 }
             }
             .navigationTitle("Categories")
@@ -179,7 +212,7 @@ struct CategoriesView: View {
                     }
                 }
             }
-            // Add new category
+            // Add new custom category sheet
             .sheet(isPresented: $showAddCategory) {
                 AddCustomCategorySheet { name, icon, color, keywords in
                     Task {
@@ -188,7 +221,7 @@ struct CategoriesView: View {
                     }
                 }
             }
-            // Edit existing custom category
+            // Edit existing custom category sheet
             .sheet(item: $categoryToEdit) { cat in
                 EditCategorySheet(category: cat) { name, icon, color, keywords in
                     Task {
@@ -197,7 +230,7 @@ struct CategoriesView: View {
                     }
                 }
             }
-            // Delete confirmation
+            // Delete confirmation alert
             .alert("Delete \"\(categoryToDelete?.name ?? "")\"?",
                    isPresented: $showDeleteConfirm,
                    presenting: categoryToDelete) { cat in
@@ -211,7 +244,7 @@ struct CategoriesView: View {
             } message: { cat in
                 Text("This will remove the \"\(cat.name)\" category from SnapShort. Photos in your library will not be deleted.")
             }
-            // Result alerts (save album, errors)
+            // Result alert (save album confirmation)
             .alert("Done", isPresented: Binding(
                 get: { viewModel.scanError != nil },
                 set: { if !$0 { viewModel.scanError = nil } }
@@ -220,8 +253,17 @@ struct CategoriesView: View {
             } message: {
                 Text(viewModel.scanError ?? "")
             }
+            // Automatic background categorization
             .task {
-                if viewModel.allCategories.isEmpty { await viewModel.loadCategories() }
+                if viewModel.allCategories.isEmpty {
+                    await viewModel.loadCategories()
+                }
+                // Automatically build index if counts are 0
+                if viewModel.allCategories.allSatisfy({ $0.photoCount == 0 }) {
+                    isCategorizing = true
+                    await viewModel.buildCategoryIndex()
+                    isCategorizing = false
+                }
             }
         }
     }
@@ -266,12 +308,14 @@ private struct CategoryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topTrailing) {
+                // Background linear gradient
                 RoundedRectangle(cornerRadius: 16)
                     .fill(LinearGradient(
                         colors: category.gradientColors,
                         startPoint: .topLeading, endPoint: .bottomTrailing
                     ))
                     .frame(height: 84)
+                    // Glass shine highlight overlay
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
                             .fill(
@@ -284,6 +328,7 @@ private struct CategoryCard: View {
                     )
                     .shadow(color: category.gradientColors.first?.opacity(0.32) ?? Color.black.opacity(0.08), radius: 6, y: 3)
 
+                // Emoji floating with subtle depth shadow
                 Text(category.emoji)
                     .font(.system(size: 38))
                     .shadow(color: Color.black.opacity(0.18), radius: 3, y: 2)
